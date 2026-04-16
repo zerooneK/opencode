@@ -121,6 +121,7 @@ export namespace Agent {
               ),
               mode: "primary",
               native: true,
+              hidden: true,
             },
             plan: {
               name: "plan",
@@ -145,6 +146,7 @@ export namespace Agent {
               ),
               mode: "primary",
               native: true,
+              hidden: true,
             },
             general: {
               name: "general",
