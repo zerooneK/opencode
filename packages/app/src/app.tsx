@@ -123,13 +123,29 @@ function SessionProviders(props: ParentProps) {
 
 function RouterRoot(props: ParentProps<{ appChildren?: JSX.Element }>) {
   const location = useLocation()
+  const auth = useAuth()
   const isAuthPage = () => location.pathname === "/login" || location.pathname === "/admin"
   return (
     <Show when={!isAuthPage()} fallback={<>{props.children}</>}>
-      <AppShellProviders>
-        {props.appChildren}
-        {props.children}
-      </AppShellProviders>
+      <Show
+        when={!auth.store.loading}
+        fallback={
+          <div class="h-dvh w-screen flex items-center justify-center bg-bg-base">
+            <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+          </div>
+        }
+      >
+        <Show when={auth.store.user} fallback={<Navigate href="/login" />}>
+          <GlobalSDKProvider>
+            <GlobalSyncProvider>
+              <AppShellProviders>
+                {props.appChildren}
+                {props.children}
+              </AppShellProviders>
+            </GlobalSyncProvider>
+          </GlobalSDKProvider>
+        </Show>
+      </Show>
     </Show>
   )
 }
@@ -317,29 +333,18 @@ export function AppInterface(props: {
       <ConnectionGate disableHealthCheck={props.disableHealthCheck}>
         <ServerKey>
           <AuthProvider>
-            <GlobalSDKProvider>
-              <GlobalSyncProvider>
-                <Dynamic
-                  component={props.router ?? Router}
-                  root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
-                >
-                  <Route path="/login" component={LoginRoute} />
-                  <Route path="/admin" component={AdminRoute} />
-                  <Route
-                    path="/"
-                    component={() => (
-                      <AuthGate>
-                        <HomeRoute />
-                      </AuthGate>
-                    )}
-                  />
-                  <Route path="/:dir" component={DirectoryLayout}>
-                    <Route path="/" component={SessionIndexRoute} />
-                    <Route path="/session/:id?" component={SessionRoute} />
-                  </Route>
-                </Dynamic>
-              </GlobalSyncProvider>
-            </GlobalSDKProvider>
+            <Dynamic
+              component={props.router ?? Router}
+              root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
+            >
+              <Route path="/login" component={LoginRoute} />
+              <Route path="/admin" component={AdminRoute} />
+              <Route path="/" component={HomeRoute} />
+              <Route path="/:dir" component={DirectoryLayout}>
+                <Route path="/" component={SessionIndexRoute} />
+                <Route path="/session/:id?" component={SessionRoute} />
+              </Route>
+            </Dynamic>
           </AuthProvider>
         </ServerKey>
       </ConnectionGate>

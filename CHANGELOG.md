@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-17 (7)
+
+### Fix GlobalSDKProvider and GlobalSyncProvider mounting before auth is confirmed
+
+**Root cause:** `GlobalSDKProvider` and `GlobalSyncProvider` were mounted outside `AuthGate` in `app.tsx`. They fire API requests the moment they mount — even when no user is logged in and the token is null — causing 401 errors on every endpoint from the first page load.
+
+**Fix:** `packages/app/src/app.tsx`
+- Moved `GlobalSDKProvider` and `GlobalSyncProvider` inside `RouterRoot`, wrapped in the auth check
+- `RouterRoot` now handles the full auth flow for all non-login routes: show spinner while loading → redirect to `/login` if not authenticated → mount SDK providers and render the app only when a valid user exists
+- Removed `GlobalSDKProvider`/`GlobalSyncProvider` from the outer `AppInterface` wrapper
+- Removed the redundant `AuthGate` wrapper from the `/` route (RouterRoot now protects all routes uniformly)
+
+---
+
 ## 2026-04-17 (6)
 
 ### Fix token being deleted on startup before server URL is ready
