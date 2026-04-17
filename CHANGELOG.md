@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-17 (11)
+
+### Fix search bar and titlebar-right icons missing in session view
+
+**Problem:** After the auth component tree restructuring, the search bar (center of titlebar) and the copy-path/open-in-editor icons (right of titlebar) stopped appearing in session views. These are rendered by `session-header.tsx` via `Portal` into `#opencode-titlebar-center` and `#opencode-titlebar-right` divs. The `createMemo(() => document.getElementById(...))` calls had no reactive dependencies — they ran once during initialization, and if the titlebar DOM elements weren't ready yet, they cached `null` permanently.
+
+**Fix:** `packages/app/src/components/session/session-header.tsx` — Added an `onMount` signal so the `createMemo` re-evaluates after the component is fully mounted, ensuring the titlebar portal targets are found.
+
+---
+
 ## 2026-04-17 (10)
 
 ### Fix TypeError: Cannot read properties of undefined (reading 'worktree')
