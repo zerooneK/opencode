@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-04-17 (13)
+
+### Redesign admin page UI to match app theme
+
+- `packages/app/src/pages/admin.tsx` — Full visual overhaul:
+  - Centered layout with logo header matching the login page style
+  - Cards use `bg-surface-base` with `rounded-xl` borders and `shadow-sm`
+  - User rows have avatar circles (accent color for admins, neutral for users), proper labels, and hover states
+  - Role select and delete button are compact inline controls
+  - "You" badge shown for the current user instead of disabled controls
+  - Create user form has proper labels, consistent input styling, and a success message
+  - Back link moved to bottom center
+  - Added user count badge in the card header
+
+---
+
 ## 2026-04-17 (12)
 
 ### Hide copy-path and open-in-editor icons for non-admin users
