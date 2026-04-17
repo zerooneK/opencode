@@ -8,7 +8,7 @@ import { Font } from "@opencode-ai/ui/font"
 import { Splash } from "@opencode-ai/ui/logo"
 import { ThemeProvider } from "@opencode-ai/ui/theme/context"
 import { MetaProvider } from "@solidjs/meta"
-import { type BaseRouterProps, Navigate, Route, Router } from "@solidjs/router"
+import { type BaseRouterProps, Navigate, Route, Router, useLocation } from "@solidjs/router"
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query"
 import { Effect } from "effect"
 import {
@@ -122,13 +122,15 @@ function SessionProviders(props: ParentProps) {
 }
 
 function RouterRoot(props: ParentProps<{ appChildren?: JSX.Element }>) {
+  const location = useLocation()
+  const isAuthPage = () => location.pathname === "/login" || location.pathname === "/admin"
   return (
-    <AppShellProviders>
-      {/*<Suspense fallback={<Loading />}>*/}
-      {props.appChildren}
-      {props.children}
-      {/*</Suspense>*/}
-    </AppShellProviders>
+    <Show when={!isAuthPage()} fallback={<>{props.children}</>}>
+      <AppShellProviders>
+        {props.appChildren}
+        {props.children}
+      </AppShellProviders>
+    </Show>
   )
 }
 
