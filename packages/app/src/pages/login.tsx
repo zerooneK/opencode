@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js"
+import { createEffect, createSignal, Show } from "solid-js"
 import { useNavigate } from "@solidjs/router"
 import { useAuth } from "@/context/auth"
 import { Splash } from "@opencode-ai/ui/logo"
@@ -6,6 +6,14 @@ import { Splash } from "@opencode-ai/ui/logo"
 export default function LoginPage() {
   const auth = useAuth()
   const navigate = useNavigate()
+  // If the user is already authenticated (e.g. Router remounted after login),
+  // redirect to home immediately.
+  createEffect(() => {
+    if (!auth.store.loading && auth.store.user) {
+      navigate("/", { replace: true })
+    }
+  })
+
   const [username, setUsername] = createSignal("")
   const [password, setPassword] = createSignal("")
   const [error, setError] = createSignal<string | undefined>()

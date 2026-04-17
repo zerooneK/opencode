@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-04-17 (16)
+
+### Fix first login requiring two attempts
+
+**Problem:** When a new user logged in for the first time, the page appeared to refresh back to the login form, requiring them to sign in twice.
+
+**Root cause:** When `auth.login()` sets `auth.store.user`, SolidJS reactivity fires immediately — `AuthenticatedApp` switches from its fallback branch (Router without SDK providers) to its `when` branch (Router WITH SDK providers). This destroys and recreates the entire Router. The `navigate("/")` call in LoginPage runs on the OLD Router's navigate function, which is already disconnected. The NEW Router mounts at `/login` and shows a fresh login form.
+
+**Fix:** `packages/app/src/pages/login.tsx` — Added a `createEffect` that reactively checks if the user is already authenticated and redirects to `/`. This handles the case where the Router remounts after login — the effect fires on the new LoginPage instance and immediately redirects.
+
+---
+
 ## 2026-04-17 (15)
 
 ### Hide all titlebar-right icons (status, terminal, review, file tree) for non-admin users
