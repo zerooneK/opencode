@@ -13,6 +13,7 @@ import { useSDK } from "@/context/sdk"
 import { useServer } from "@/context/server"
 import { monoFontFamily, useSettings } from "@/context/settings"
 import type { LocalPTY } from "@/context/terminal"
+import { useAuth } from "@/context/auth"
 import { disposeIfDisposable, getHoveredLinkText, setOptionIfSupported } from "@/utils/runtime-adapters"
 import { terminalWriter } from "@/utils/terminal-writer"
 
@@ -167,6 +168,7 @@ export const Terminal = (props: TerminalProps) => {
   const theme = useTheme()
   const language = useLanguage()
   const server = useServer()
+  const auth = useAuth()
   const directory = sdk.directory
   const client = sdk.client
   const url = sdk.url
@@ -518,6 +520,12 @@ export const Terminal = (props: TerminalProps) => {
           // For same-origin requests, let the browser reuse the page's existing auth.
           next.username = username
           next.password = password
+        }
+        // WebSocket connections can't send custom headers, so pass the user
+        // auth token as a query parameter for UserAuthMiddleware to pick up.
+        const userToken = auth.store.token
+        if (userToken) {
+          next.searchParams.set("user_token", userToken)
         }
 
         const socket = new WebSocket(next)

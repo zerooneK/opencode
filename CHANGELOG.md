@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-04-17 (18)
+
+### Fix terminal WebSocket connection failing with 401 Unauthorized
+
+**Problem:** The terminal panel failed to connect with `WebSocket connection failed` in the console. The browser's WebSocket API doesn't support custom headers, so the user's Bearer token was never sent — `UserAuthMiddleware` rejected the connection.
+
+**Fixes:**
+- `packages/opencode/src/server/middleware.ts` — `UserAuthMiddleware` now also checks for a `user_token` query parameter as a fallback when no Authorization header is present.
+- `packages/app/src/components/terminal.tsx` — The terminal WebSocket URL now includes `?user_token=<token>` so the server can authenticate the connection.
+
+---
+
 ## 2026-04-17 (17)
 
 ### Disable review panel auto-open on session start
