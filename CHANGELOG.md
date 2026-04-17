@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-17 (14)
+
+### Move debug bar to top-right and add logout button to sidebar
+
+- `packages/app/src/components/debug-bar.tsx` — Moved the dev performance metrics panel from `bottom-3 right-3` to `top-12 right-3` so it sits below the titlebar instead of overlapping the prompt input.
+- `packages/app/src/pages/layout/sidebar-shell.tsx` — Added a "Sign out" button to the bottom of the sidebar rail, above the settings gear icon. Uses the `align-right` icon.
+- `packages/app/src/pages/layout.tsx` — Connected the logout handler: calls `auth.logout()` then navigates to `/login`.
+
+---
+
 ## 2026-04-17 (13)
 
 ### Redesign admin page UI to match app theme
