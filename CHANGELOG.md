@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-17 (26)
+
+### Fix review panel auto-opening for non-admin users
+
+- `packages/app/src/context/layout.tsx` — Changed the fallback value in `setReviewPanelOpened` from `true` to `false`. When the `review` store object exists but `panelOpened` is undefined, it was defaulting to `true` (open). Now it correctly defaults to `false` (closed).
+
+---
+
 ## 2026-04-17 (25)
 
 ### Fix duplicate search bar and icons in titlebar

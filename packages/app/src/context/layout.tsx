@@ -770,7 +770,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
             return
           }
 
-          const value = current.panelOpened ?? true
+          const value = current.panelOpened ?? false
           if (value === next) return
           setStore("review", "panelOpened", next)
         }
