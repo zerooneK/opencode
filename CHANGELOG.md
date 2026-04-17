@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-17 (24)
+
+### Fix typecheck error in UserAuthMiddleware
+
+- `packages/opencode/src/server/middleware.ts` — Made `UserAuthMiddleware` `async` so the `c.json()` return (a `Response`) is wrapped in a `Promise`, matching the `MiddlewareHandler` type signature.
+
+---
+
 ## 2026-04-17 (23)
 
 ### Fix typecheck error in authenticatedFetch

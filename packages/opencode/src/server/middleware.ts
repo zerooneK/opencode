@@ -86,7 +86,7 @@ export function CorsMiddleware(opts?: { cors?: string[] }): MiddlewareHandler {
 // Public routes that do not require user session auth
 const PUBLIC_PATHS = new Set(["/user/login", "/user/create"])
 
-export const UserAuthMiddleware: MiddlewareHandler = (c, next) => {
+export const UserAuthMiddleware: MiddlewareHandler = async (c, next) => {
   if (c.req.method === "OPTIONS") return next()
   if (PUBLIC_PATHS.has(c.req.path)) return next()
   // If no users exist yet (initial setup), allow through so first admin can be created
