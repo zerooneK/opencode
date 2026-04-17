@@ -2,7 +2,7 @@ import { createSignal, createResource, For, Show, createMemo, createEffect, on }
 import { useSDK } from "@/context/sdk"
 import { useLayout } from "@/context/layout"
 import { Icon } from "@opencode-ai/ui/icon"
-import { Button } from "@opencode-ai/ui/button"
+import { IconButton } from "@opencode-ai/ui/icon-button"
 
 type FileNode = {
   name: string
@@ -89,7 +89,7 @@ export function FileExplorerPanel() {
   const previewing = () => previewFilePath() !== false
 
   return (
-    <Show when={typeof window !== "undefined" && typeof document !== "undefined"}>
+    <Show when={typeof window !== "undefined"}>
       <aside
         id="file-explorer-panel"
         aria-label="File Explorer"
@@ -104,53 +104,39 @@ export function FileExplorerPanel() {
         style={{ width: panelWidth() }}
       >
         <div
-          class="h-full flex flex-col border-l border-border-weaker-base overflow-hidden"
+          class="h-full flex flex-col overflow-hidden border-l border-border-weaker-base"
           style={{ "min-width": `${layout.fileExplorer.width()}px` }}
         >
-          {/* Header */}
-          <div class="shrink-0 flex items-center justify-between px-3 h-10 border-b border-border-base">
-            <div class="flex items-center gap-2 min-w-0">
-              <Show when={previewing()}>
-                <Button
-                  variant="ghost"
-                  class="titlebar-icon w-6 h-6 p-0 box-border shrink-0"
-                  onClick={closePreview}
-                  aria-label="Back to file list"
-                >
-                  <Icon size="small" name="chevron-left" />
-                </Button>
-              </Show>
-              <Show when={!previewing() && breadcrumbs().length > 0}>
-                <Button
-                  variant="ghost"
-                  class="titlebar-icon w-6 h-6 p-0 box-border shrink-0"
-                  onClick={navigateBack}
-                  aria-label="Go back"
-                >
-                  <Icon size="small" name="chevron-left" />
-                </Button>
-              </Show>
-              <span class="text-12-medium text-text-strong truncate">
-                {previewing()
-                  ? (previewFilePath() as string).split("/").pop()
-                  : "Files"}
-              </span>
-            </div>
-            <Button
+          {/* Header — matches file tree panel header style */}
+          <div class="shrink-0 flex items-center gap-2 px-3 h-[37px] border-b border-border-base">
+            <Show when={previewing() || breadcrumbs().length > 0}>
+              <IconButton
+                icon="chevron-left"
+                variant="ghost"
+                class="h-5 w-5"
+                onClick={() => (previewing() ? closePreview() : navigateBack())}
+                aria-label="Go back"
+              />
+            </Show>
+            <span class="text-12-medium text-text-strong truncate flex-1">
+              {previewing()
+                ? (previewFilePath() as string).split("/").pop()
+                : "Files"}
+            </span>
+            <IconButton
+              icon="close-small"
               variant="ghost"
-              class="titlebar-icon w-6 h-6 p-0 box-border shrink-0"
+              class="h-5 w-5"
               onClick={() => layout.fileExplorer.close()}
               aria-label="Close file explorer"
-            >
-              <Icon size="small" name="close-small" />
-            </Button>
+            />
           </div>
 
           {/* Breadcrumbs */}
           <Show when={!previewing() && breadcrumbs().length > 0}>
             <div class="shrink-0 flex items-center gap-1 px-3 py-1.5 text-11-regular text-text-weak border-b border-border-base overflow-x-auto">
               <button
-                class="shrink-0 hover:text-text-strong transition-colors cursor-pointer bg-transparent border-none p-0"
+                class="shrink-0 hover:text-text-strong transition-colors cursor-pointer bg-transparent border-none p-0 text-11-regular text-text-weak"
                 onClick={navigateToRoot}
               >
                 ~
@@ -160,8 +146,11 @@ export function FileExplorerPanel() {
                   <>
                     <span class="shrink-0 text-text-weaker">/</span>
                     <button
-                      class="shrink-0 hover:text-text-strong transition-colors truncate max-w-[120px] cursor-pointer bg-transparent border-none p-0"
-                      classList={{ "text-text-base": index() === breadcrumbs().length - 1 }}
+                      class="shrink-0 hover:text-text-strong transition-colors truncate max-w-[120px] cursor-pointer bg-transparent border-none p-0 text-11-regular"
+                      classList={{
+                        "text-text-base": index() === breadcrumbs().length - 1,
+                        "text-text-weak": index() !== breadcrumbs().length - 1,
+                      }}
                       onClick={() => {
                         const newCrumbs = breadcrumbs().slice(0, index() + 1)
                         setBreadcrumbs(newCrumbs)
@@ -177,8 +166,8 @@ export function FileExplorerPanel() {
             </div>
           </Show>
 
-          {/* Content */}
-          <div class="flex-1 min-h-0 overflow-y-auto">
+          {/* Content area — matches bg-background-stronger like file tree */}
+          <div class="flex-1 min-h-0 overflow-y-auto bg-background-stronger">
             <Show when={previewing()} fallback={<FileList />}>
               <FilePreview />
             </Show>
@@ -193,11 +182,14 @@ export function FileExplorerPanel() {
       <>
         <Show when={error()}>
           {(err) => (
-            <div class="flex flex-col items-center justify-center py-8 gap-2">
+            <div class="flex flex-col items-center justify-center py-8 gap-2 px-3">
               <span class="text-12-regular text-text-weak">{err()}</span>
-              <Button variant="ghost" onClick={() => refetch()} class="text-12-regular">
+              <button
+                class="text-12-regular text-accent-base hover:underline cursor-pointer bg-transparent border-none p-0"
+                onClick={() => refetch()}
+              >
                 Retry
-              </Button>
+              </button>
             </div>
           )}
         </Show>
@@ -205,24 +197,25 @@ export function FileExplorerPanel() {
           <Show
             when={!files.loading}
             fallback={
-              <div class="flex items-center justify-center py-8">
-                <span class="text-12-regular text-text-weak">Loading...</span>
-              </div>
+              <div class="px-3 py-2 text-12-regular text-text-weak">Loading...</div>
             }
           >
             <Show
               when={(files() ?? []).length > 0}
               fallback={
-                <div class="flex items-center justify-center py-8">
-                  <span class="text-12-regular text-text-weak">No files</span>
+                <div class="h-full flex flex-col">
+                  <div class="h-6 shrink-0" aria-hidden />
+                  <div class="flex-1 pb-64 flex items-center justify-center text-center">
+                    <div class="text-12-regular text-text-weak">No files</div>
+                  </div>
                 </div>
               }
             >
-              <div class="flex flex-col py-1">
+              <div class="flex flex-col pt-3 px-3">
                 <For each={files()}>
                   {(file) => (
                     <button
-                      class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-surface-base transition-colors text-left w-full group cursor-pointer bg-transparent border-none"
+                      class="flex items-center gap-2 py-1 hover:bg-surface-base transition-colors text-left w-full cursor-pointer bg-transparent border-none px-1 rounded-md"
                       onClick={() => {
                         if (file.type === "directory") {
                           navigateToDir(file.path, file.name)
@@ -251,7 +244,7 @@ export function FileExplorerPanel() {
                         <Icon
                           size="small"
                           name="chevron-right"
-                          class="text-icon-weaker ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          class="text-icon-weaker ml-auto shrink-0"
                         />
                       </Show>
                     </button>
@@ -270,16 +263,17 @@ export function FileExplorerPanel() {
       <Show
         when={!fileContent.loading}
         fallback={
-          <div class="flex items-center justify-center py-8">
-            <span class="text-12-regular text-text-weak">Loading preview...</span>
-          </div>
+          <div class="px-3 py-2 text-12-regular text-text-weak">Loading preview...</div>
         }
       >
         <Show
           when={fileContent()}
           fallback={
-            <div class="flex items-center justify-center py-8">
-              <span class="text-12-regular text-text-weak">Unable to preview this file</span>
+            <div class="h-full flex flex-col">
+              <div class="h-6 shrink-0" aria-hidden />
+              <div class="flex-1 pb-64 flex items-center justify-center text-center">
+                <div class="text-12-regular text-text-weak">Unable to preview this file</div>
+              </div>
             </div>
           }
         >
@@ -290,9 +284,11 @@ export function FileExplorerPanel() {
                 <Show
                   when={content().encoding === "base64" && content().mimeType?.startsWith("image/")}
                   fallback={
-                    <div class="flex flex-col items-center justify-center py-8 gap-2">
-                      <Icon name="code-lines" size="large" class="text-icon-weak" />
-                      <span class="text-12-regular text-text-weak">Binary file</span>
+                    <div class="h-full flex flex-col">
+                      <div class="h-6 shrink-0" aria-hidden />
+                      <div class="flex-1 pb-64 flex items-center justify-center text-center">
+                        <div class="text-12-regular text-text-weak">Binary file</div>
+                      </div>
                     </div>
                   }
                 >
