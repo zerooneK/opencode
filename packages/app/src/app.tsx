@@ -121,30 +121,40 @@ function SessionProviders(props: ParentProps) {
   )
 }
 
+// Mounts GlobalSDKProvider + GlobalSyncProvider once when the user is confirmed logged in.
+// Stays mounted for the whole session (even when visiting /admin) so providers are never
+// torn down mid-session, which would cause sidebar and sync state to reset.
+function AuthenticatedApp(props: ParentProps) {
+  const auth = useAuth()
+  return (
+    <Show
+      when={!auth.store.loading}
+      fallback={
+        <div class="h-dvh w-screen flex items-center justify-center bg-bg-base">
+          <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+        </div>
+      }
+    >
+      <Show when={auth.store.user} fallback={props.children}>
+        <GlobalSDKProvider>
+          <GlobalSyncProvider>{props.children}</GlobalSyncProvider>
+        </GlobalSDKProvider>
+      </Show>
+    </Show>
+  )
+}
+
 function RouterRoot(props: ParentProps<{ appChildren?: JSX.Element }>) {
   const location = useLocation()
   const auth = useAuth()
   const isAuthPage = () => location.pathname === "/login" || location.pathname === "/admin"
   return (
     <Show when={!isAuthPage()} fallback={<>{props.children}</>}>
-      <Show
-        when={!auth.store.loading}
-        fallback={
-          <div class="h-dvh w-screen flex items-center justify-center bg-bg-base">
-            <Splash class="w-16 h-20 opacity-50 animate-pulse" />
-          </div>
-        }
-      >
-        <Show when={auth.store.user} fallback={<Navigate href="/login" />}>
-          <GlobalSDKProvider>
-            <GlobalSyncProvider>
-              <AppShellProviders>
-                {props.appChildren}
-                {props.children}
-              </AppShellProviders>
-            </GlobalSyncProvider>
-          </GlobalSDKProvider>
-        </Show>
+      <Show when={auth.store.user} fallback={<Navigate href="/login" />}>
+        <AppShellProviders>
+          {props.appChildren}
+          {props.children}
+        </AppShellProviders>
       </Show>
     </Show>
   )
@@ -333,18 +343,20 @@ export function AppInterface(props: {
       <ConnectionGate disableHealthCheck={props.disableHealthCheck}>
         <ServerKey>
           <AuthProvider>
-            <Dynamic
-              component={props.router ?? Router}
-              root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
-            >
-              <Route path="/login" component={LoginRoute} />
-              <Route path="/admin" component={AdminRoute} />
-              <Route path="/" component={HomeRoute} />
-              <Route path="/:dir" component={DirectoryLayout}>
-                <Route path="/" component={SessionIndexRoute} />
-                <Route path="/session/:id?" component={SessionRoute} />
-              </Route>
-            </Dynamic>
+            <AuthenticatedApp>
+              <Dynamic
+                component={props.router ?? Router}
+                root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
+              >
+                <Route path="/login" component={LoginRoute} />
+                <Route path="/admin" component={AdminRoute} />
+                <Route path="/" component={HomeRoute} />
+                <Route path="/:dir" component={DirectoryLayout}>
+                  <Route path="/" component={SessionIndexRoute} />
+                  <Route path="/session/:id?" component={SessionRoute} />
+                </Route>
+              </Dynamic>
+            </AuthenticatedApp>
           </AuthProvider>
         </ServerKey>
       </ConnectionGate>

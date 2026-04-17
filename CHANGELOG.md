@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-17 (9)
+
+### Fix SDK providers being destroyed when navigating to admin page
+
+**Problem:** `GlobalSDKProvider` and `GlobalSyncProvider` were inside `RouterRoot`. When navigating to `/admin` (an auth page), `RouterRoot` stopped rendering them — destroying all sync and sidebar state. Navigating back caused a crash because `sidebar-workspace.tsx` tried to read `.worktree` from data that hadn't reloaded yet.
+
+**Fix:** Introduced `AuthenticatedApp` component that wraps `GlobalSDKProvider` + `GlobalSyncProvider` once at the session level (outside the router's per-route logic). It mounts them when the user is confirmed logged in and keeps them mounted for the whole session — even when visiting `/admin`. `RouterRoot` goes back to only handling `AppShellProviders` wrapping for non-auth routes.
+
+---
+
 ## 2026-04-17 (8)
 
 ### Restrict admin page to admin role + add titlebar icon
