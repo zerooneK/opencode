@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-17 (6)
+
+### Fix token being deleted on startup before server URL is ready
+
+**Root cause:** In `auth.tsx`, `createResource` ran the token-validation fetch immediately on mount. At that moment `apiUrl()` returns `""` because the server context hasn't initialized yet. The `authFetch("/user/me")` call hit the Vite dev server (`localhost:4444`) instead of the backend, got a non-OK response, and deleted the token from localStorage. Every subsequent SDK request then had no Bearer token → 401 on everything.
+
+**Fix:** `packages/app/src/context/auth.tsx` — Pass `apiUrl` as the resource *source* to `createResource`. SolidJS will only run (and re-run) the async function when `apiUrl()` returns a non-empty value, ensuring the validation never fires against the wrong origin.
+
+---
+
 ## 2026-04-17 (5)
 
 ### Fix Bearer token not being sent — Request object headers lost

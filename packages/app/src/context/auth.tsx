@@ -36,8 +36,12 @@ function AuthContext() {
       },
     })
 
-  // Validate existing token on startup
-  const [_init] = createResource(async () => {
+  // Validate existing token on startup — but only once the server URL is known.
+  // If we validate before the server context is ready, apiUrl() returns "" and the
+  // request hits the Vite dev server instead of the backend, which causes the token
+  // to be incorrectly deleted from localStorage.
+  const [_init] = createResource(apiUrl, async (url) => {
+    if (!url) return
     const token = localStorage.getItem(TOKEN_KEY)
     if (!token) {
       setStore("loading", false)
