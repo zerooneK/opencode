@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-17 (21)
+
+### Match file explorer panel style to existing file tree panel
+
+- Content area now uses `bg-background-stronger` (same darker background as file tree)
+- Header uses `IconButton` with `h-5 w-5` sizing to match existing panel buttons
+- Padding, spacing, empty states, and loading text all match the file tree panel
+- Disabled DebugBar overlay in dev mode (`packages/app/src/pages/layout.tsx`)
+
+---
+
 ## 2026-04-17 (20)
 
 ### Fix file explorer panel not showing content
