@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-17 (5)
+
+### Fix Bearer token not being sent — Request object headers lost
+
+The SDK's generated client calls `fetch(request)` passing a pre-built `Request` object as the first argument with `init` as `undefined`. The previous `authenticatedFetch` wrapper read `init?.headers` which was always `undefined` in this case, so the Authorization header was never injected and the original request headers were dropped.
+
+- `packages/app/src/utils/server.ts` — Detect when `input` is a `Request` instance, copy headers from the request object itself, inject the Bearer token, then reconstruct the request with `new Request(input, { headers })`.
+
+---
+
 ## 2026-04-17 (4)
 
 ### Fix CORS + 401 errors on all API calls after login

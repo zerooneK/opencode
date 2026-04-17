@@ -16,12 +16,14 @@ export function createSdkForServer({
 
   const baseFetch = config.fetch ?? globalThis.fetch.bind(globalThis)
   const authenticatedFetch: typeof fetch = (input, init) => {
-    const headers = new Headers(init?.headers)
+    const isRequest = input instanceof Request
+    const headers = isRequest ? new Headers((input as Request).headers) : new Headers(init?.headers)
     if (!headers.has("Authorization")) {
       const userToken = typeof localStorage !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null
       if (userToken) headers.set("Authorization", `Bearer ${userToken}`)
       else if (basicAuth) headers.set("Authorization", basicAuth)
     }
+    if (isRequest) return baseFetch(new Request(input as Request, { headers }))
     return baseFetch(input, { ...init, headers })
   }
 
