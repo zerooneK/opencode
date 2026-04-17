@@ -1,0 +1,111 @@
+import { randomBytes, pbkdf2Sync } from "crypto"
+import { Database, eq } from "../storage"
+import { UserTable, UserSessionTable } from "./user.sql"
+
+// 30 days in milliseconds
+const SESSION_TTL = 30 * 24 * 60 * 60 * 1000
+
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex")
+  const hash = pbkdf2Sync(password, salt, 100_000, 64, "sha512").toString("hex")
+  return `${salt}:${hash}`
+}
+
+function verifyPassword(password: string, stored: string): boolean {
+  const [salt, hash] = stored.split(":")
+  const verify = pbkdf2Sync(password, salt, 100_000, 64, "sha512").toString("hex")
+  return hash === verify
+}
+
+export namespace UserAuth {
+  export type Role = "admin" | "user"
+
+  export type User = {
+    id: string
+    username: string
+    role: Role
+  }
+
+  export function count(): number {
+    return Database.use((db) => db.select().from(UserTable).all().length)
+  }
+
+  export function create(username: string, password: string, role: Role = "user"): string {
+    const id = crypto.randomUUID()
+    Database.transaction((db) => {
+      db.insert(UserTable)
+        .values({ id, username, password: hashPassword(password), role })
+        .run()
+    })
+    return id
+  }
+
+  export function findByUsername(username: string) {
+    return Database.use((db) =>
+      db.select().from(UserTable).where(eq(UserTable.username, username)).get(),
+    )
+  }
+
+  export function findById(id: string) {
+    return Database.use((db) => db.select().from(UserTable).where(eq(UserTable.id, id)).get())
+  }
+
+  export function login(username: string, password: string): { token: string; user: User } | undefined {
+    const row = findByUsername(username)
+    if (!row) return
+    if (!verifyPassword(password, row.password)) return
+    const token = randomBytes(32).toString("hex")
+    Database.transaction((db) => {
+      db.insert(UserSessionTable)
+        .values({ id: token, user_id: row.id, expires_at: Date.now() + SESSION_TTL })
+        .run()
+    })
+    return { token, user: { id: row.id, username: row.username, role: row.role } }
+  }
+
+  export function logout(token: string): void {
+    Database.transaction((db) => {
+      db.delete(UserSessionTable).where(eq(UserSessionTable.id, token)).run()
+    })
+  }
+
+  export function validateSession(token: string): User | undefined {
+    const session = Database.use((db) =>
+      db.select().from(UserSessionTable).where(eq(UserSessionTable.id, token)).get(),
+    )
+    if (!session) return
+    if (session.expires_at < Date.now()) {
+      logout(token)
+      return
+    }
+    const row = findById(session.user_id)
+    if (!row) return
+    return { id: row.id, username: row.username, role: row.role }
+  }
+
+  export function listUsers(): User[] {
+    return Database.use((db) =>
+      db
+        .select({ id: UserTable.id, username: UserTable.username, role: UserTable.role })
+        .from(UserTable)
+        .all(),
+    )
+  }
+
+  export function deleteUser(id: string): void {
+    Database.transaction((db) => {
+      db.delete(UserTable).where(eq(UserTable.id, id)).run()
+    })
+  }
+
+  export function changeRole(id: string, role: Role): void {
+    Database.transaction((db) => {
+      db.update(UserTable).set({ role }).where(eq(UserTable.id, id)).run()
+    })
+  }
+
+  export function extractToken(authHeader: string | undefined): string | undefined {
+    if (!authHeader?.startsWith("Bearer ")) return
+    return authHeader.slice(7)
+  }
+}

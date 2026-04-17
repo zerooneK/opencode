@@ -10,6 +10,7 @@ import { Flag } from "@/flag/flag"
 import { basicAuth } from "hono/basic-auth"
 import { cors } from "hono/cors"
 import { compress } from "hono/compress"
+import { UserAuth } from "@/auth/user"
 
 const log = Log.create({ service: "server" })
 
@@ -80,6 +81,20 @@ export function CorsMiddleware(opts?: { cors?: string[] }): MiddlewareHandler {
       if (opts?.cors?.includes(input)) return input
     },
   })
+}
+
+// Public routes that do not require user session auth
+const PUBLIC_PATHS = new Set(["/user/login", "/user/create"])
+
+export const UserAuthMiddleware: MiddlewareHandler = (c, next) => {
+  if (c.req.method === "OPTIONS") return next()
+  if (PUBLIC_PATHS.has(c.req.path)) return next()
+  // If no users exist yet (initial setup), allow through so first admin can be created
+  if (UserAuth.count() === 0) return next()
+  const token = UserAuth.extractToken(c.req.header("Authorization"))
+  const user = token ? UserAuth.validateSession(token) : undefined
+  if (!user) return c.json({ error: "Unauthorized" }, 401)
+  return next()
 }
 
 const zipped = compress()

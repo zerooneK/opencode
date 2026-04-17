@@ -41,12 +41,15 @@ import { PromptProvider } from "@/context/prompt"
 import { ServerConnection, ServerProvider, serverName, useServer } from "@/context/server"
 import { SettingsProvider } from "@/context/settings"
 import { TerminalProvider } from "@/context/terminal"
+import { AuthProvider, useAuth } from "@/context/auth"
 import DirectoryLayout from "@/pages/directory-layout"
 import Layout from "@/pages/layout"
 import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
 
 const HomeRoute = lazy(() => import("@/pages/home"))
+const LoginRoute = lazy(() => import("@/pages/login"))
+const AdminRoute = lazy(() => import("@/pages/admin"))
 const loadSession = () => import("@/pages/session")
 const Session = lazy(loadSession)
 const Loading = () => <div class="size-full" />
@@ -278,6 +281,24 @@ function ServerKey(props: ParentProps) {
   )
 }
 
+function AuthGate(props: ParentProps) {
+  const auth = useAuth()
+  return (
+    <Show
+      when={!auth.store.loading}
+      fallback={
+        <div class="h-dvh w-screen flex items-center justify-center bg-bg-base">
+          <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+        </div>
+      }
+    >
+      <Show when={auth.store.user} fallback={<Navigate href="/login" />}>
+        {props.children}
+      </Show>
+    </Show>
+  )
+}
+
 export function AppInterface(props: {
   children?: JSX.Element
   defaultServer: ServerConnection.Key
@@ -293,20 +314,31 @@ export function AppInterface(props: {
     >
       <ConnectionGate disableHealthCheck={props.disableHealthCheck}>
         <ServerKey>
-          <GlobalSDKProvider>
-            <GlobalSyncProvider>
-              <Dynamic
-                component={props.router ?? Router}
-                root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
-              >
-                <Route path="/" component={HomeRoute} />
-                <Route path="/:dir" component={DirectoryLayout}>
-                  <Route path="/" component={SessionIndexRoute} />
-                  <Route path="/session/:id?" component={SessionRoute} />
-                </Route>
-              </Dynamic>
-            </GlobalSyncProvider>
-          </GlobalSDKProvider>
+          <AuthProvider>
+            <GlobalSDKProvider>
+              <GlobalSyncProvider>
+                <Dynamic
+                  component={props.router ?? Router}
+                  root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
+                >
+                  <Route path="/login" component={LoginRoute} />
+                  <Route path="/admin" component={AdminRoute} />
+                  <Route
+                    path="/"
+                    component={() => (
+                      <AuthGate>
+                        <HomeRoute />
+                      </AuthGate>
+                    )}
+                  />
+                  <Route path="/:dir" component={DirectoryLayout}>
+                    <Route path="/" component={SessionIndexRoute} />
+                    <Route path="/session/:id?" component={SessionRoute} />
+                  </Route>
+                </Dynamic>
+              </GlobalSyncProvider>
+            </GlobalSDKProvider>
+          </AuthProvider>
         </ServerKey>
       </ConnectionGate>
     </ServerProvider>
