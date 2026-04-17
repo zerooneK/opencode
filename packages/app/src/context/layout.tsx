@@ -18,7 +18,6 @@ const DEFAULT_SIDEBAR_WIDTH = 344
 const DEFAULT_FILE_TREE_WIDTH = 200
 const DEFAULT_SESSION_WIDTH = 600
 const DEFAULT_TERMINAL_HEIGHT = 280
-const DEFAULT_FILE_EXPLORER_WIDTH = 320
 export type AvatarColorKey = (typeof AVATAR_COLOR_KEYS)[number]
 
 export function getAvatarColors(key?: string) {
@@ -252,10 +251,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         },
         session: {
           width: DEFAULT_SESSION_WIDTH,
-        },
-        fileExplorer: {
-          opened: false,
-          width: DEFAULT_FILE_EXPLORER_WIDTH,
         },
         mobileSidebar: {
           opened: false,
@@ -693,38 +688,6 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
             return
           }
           setStore("session", "width", width)
-        },
-      },
-      fileExplorer: {
-        opened: createMemo(() => store.fileExplorer?.opened ?? false),
-        width: createMemo(() => store.fileExplorer?.width ?? DEFAULT_FILE_EXPLORER_WIDTH),
-        open() {
-          if (!store.fileExplorer) {
-            setStore("fileExplorer", { opened: true, width: DEFAULT_FILE_EXPLORER_WIDTH })
-            return
-          }
-          setStore("fileExplorer", "opened", true)
-        },
-        close() {
-          if (!store.fileExplorer) {
-            setStore("fileExplorer", { opened: false, width: DEFAULT_FILE_EXPLORER_WIDTH })
-            return
-          }
-          setStore("fileExplorer", "opened", false)
-        },
-        toggle() {
-          if (!store.fileExplorer) {
-            setStore("fileExplorer", { opened: true, width: DEFAULT_FILE_EXPLORER_WIDTH })
-            return
-          }
-          setStore("fileExplorer", "opened", (x) => !x)
-        },
-        resize(width: number) {
-          if (!store.fileExplorer) {
-            setStore("fileExplorer", { opened: true, width })
-            return
-          }
-          setStore("fileExplorer", "width", width)
         },
       },
       mobileSidebar: {

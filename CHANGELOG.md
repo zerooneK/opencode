@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-04-17 (22)
+
+### Remove file explorer panel feature
+
+Removed the custom file explorer panel since the built-in file tree already provides workspace file browsing. Reverted all related changes:
+- Deleted `packages/app/src/components/session/file-explorer-panel.tsx`
+- Removed `fileExplorer` state from `packages/app/src/context/layout.tsx`
+- Removed folder toggle button from `packages/app/src/components/session/session-header.tsx`
+- Reverted session panel width calculation in `packages/app/src/pages/session.tsx`
+
+---
+
 ## 2026-04-17 (21)
 
 ### Match file explorer panel style to existing file tree panel
