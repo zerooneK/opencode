@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-17 (17)
+
+### Disable review panel auto-open on session start
+
+- `packages/app/src/context/layout.tsx` — Changed the default value of `reviewPanelOpened` from `true` to `false`. The review panel (right side) no longer opens automatically when entering a session.
+
+---
+
 ## 2026-04-17 (16)
 
 ### Fix first login requiring two attempts
