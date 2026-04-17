@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-17 (8)
+
+### Restrict admin page to admin role + add titlebar icon
+
+- `packages/app/src/components/titlebar.tsx` — Added a `settings-gear` icon button in the top-right of the titlebar, only visible when the logged-in user has the `admin` role. Clicking it navigates to `/admin`.
+- `packages/app/src/pages/admin.tsx` — Replaced the one-shot `if` guard with a reactive `createEffect` that redirects non-admins to `/` even if auth finishes loading after the component mounts.
+
+---
+
 ## 2026-04-17 (7)
 
 ### Fix GlobalSDKProvider and GlobalSyncProvider mounting before auth is confirmed

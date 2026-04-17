@@ -1,4 +1,4 @@
-import { createResource, createSignal, For, Show } from "solid-js"
+import { createEffect, createResource, createSignal, For, Show } from "solid-js"
 import { useNavigate } from "@solidjs/router"
 import { useAuth } from "@/context/auth"
 
@@ -6,11 +6,12 @@ export default function AdminPage() {
   const auth = useAuth()
   const navigate = useNavigate()
 
-  // Redirect non-admins
-  if (auth.store.user?.role !== "admin") {
-    navigate("/", { replace: true })
-    return null
-  }
+  // Reactively redirect non-admins (also handles the case where auth finishes loading after mount)
+  createEffect(() => {
+    if (!auth.store.loading && auth.store.user?.role !== "admin") {
+      navigate("/", { replace: true })
+    }
+  })
 
   const [users, { refetch }] = createResource(() => auth.listUsers())
   const [newUsername, setNewUsername] = createSignal("")

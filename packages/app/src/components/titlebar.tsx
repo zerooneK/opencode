@@ -11,6 +11,7 @@ import { useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
+import { useAuth } from "@/context/auth"
 import { applyPath, backPath, forwardPath } from "./titlebar-history"
 
 type TauriDesktopWindow = {
@@ -40,6 +41,7 @@ export function Titlebar() {
   const platform = usePlatform()
   const command = useCommand()
   const language = useLanguage()
+  const auth = useAuth()
   const theme = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
@@ -308,6 +310,17 @@ export function Titlebar() {
         data-tauri-drag-region
         onMouseDown={drag}
       >
+        <Show when={auth.store.user?.role === "admin"}>
+          <Tooltip placement="bottom" value="Admin Panel" openDelay={500}>
+            <IconButton
+              icon="settings-gear"
+              variant="ghost"
+              class="titlebar-icon rounded-md"
+              onClick={() => navigate("/admin")}
+              aria-label="Admin Panel"
+            />
+          </Tooltip>
+        </Show>
         <div id="opencode-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
         <Show when={windows()}>
           {!tauriApi() && <div class="w-36 shrink-0" />}
