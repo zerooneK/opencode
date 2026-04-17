@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-04-17 (20)
+
+### Fix file explorer panel not showing content
+
+- Lazy resource loading — files only fetch when panel opens
+- Error handling with Retry button
+- Fixed inner content collapse during width animation (added min-width)
+- Added `fileExplorer` to store initial state for proper reactivity
+
+---
+
+## 2026-04-17 (19)
+
+### Add file explorer panel (right side)
+
+A new file explorer panel that slides in from the right side of the session view. All users can access it via the folder icon in the titlebar.
+
+- **`packages/app/src/components/session/file-explorer-panel.tsx`** — New component: lists workspace files, supports directory navigation with breadcrumbs, and previews file content (text + images) on click.
+- **`packages/app/src/context/layout.tsx`** — Added `fileExplorer` state (opened, width, toggle, resize) with default width of 320px.
+- **`packages/app/src/components/session/session-header.tsx`** — Added folder icon toggle button in the titlebar, visible to all users (outside the admin-only block).
+- **`packages/app/src/pages/session.tsx`** — Rendered `FileExplorerPanel` after `SessionSidePanel` and updated session panel width calculation to account for the file explorer width.
+
+---
+
 ## 2026-04-17 (18)
 
 ### Fix terminal WebSocket connection failing with 401 Unauthorized
