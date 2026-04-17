@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-17 (12)
+
+### Hide copy-path and open-in-editor icons for non-admin users
+
+- `packages/app/src/components/session/session-header.tsx` — The "Copy path" button and "Open in editor" (VS Code, Cursor, etc.) dropdown in the titlebar right section are now only visible to users with the `admin` role. Other toolbar icons (status, terminal, review panel, file tree) remain visible to all users since they control UI panels.
+
+---
+
 ## 2026-04-17 (11)
 
 ### Fix search bar and titlebar-right icons missing in session view

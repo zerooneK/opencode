@@ -15,6 +15,7 @@ import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
+import { useAuth } from "@/context/auth"
 import { useServer } from "@/context/server"
 import { useSync } from "@/context/sync"
 import { useTerminal } from "@/context/terminal"
@@ -132,6 +133,7 @@ export function SessionHeader() {
   const layout = useLayout()
   const command = useCommand()
   const server = useServer()
+  const auth = useAuth()
   const platform = usePlatform()
   const language = useLanguage()
   const sync = useSync()
@@ -303,7 +305,7 @@ export function SessionHeader() {
         {(mount) => (
           <Portal mount={mount()}>
             <div class="flex items-center gap-2">
-              <Show when={projectDirectory()}>
+              <Show when={projectDirectory() && auth.store.user?.role === "admin"}>
                 <div class="hidden xl:flex items-center">
                   <Show
                     when={canOpen()}
