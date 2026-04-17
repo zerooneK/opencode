@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-17 (3)
+
+### Fix "Sign in" button style on login page
+
+- `packages/app/src/pages/login.tsx` — Changed button background from `bg-accent-base` (was nearly invisible) to `bg-neutral-800` with `hover:bg-neutral-700` so it looks like a proper solid filled button
+
+---
+
 ## 2026-04-17 (2)
 
 ### Add user login system with roles (admin/user)
