@@ -418,69 +418,71 @@ export function SessionHeader() {
                   </Show>
                 </div>
               </Show>
-              <div class="flex items-center gap-1">
-                <Tooltip placement="bottom" value={language.t("status.popover.trigger")}>
-                  <StatusPopover />
-                </Tooltip>
-                <TooltipKeybind
-                  title={language.t("command.terminal.toggle")}
-                  keybind={command.keybind("terminal.toggle")}
-                >
-                  <Button
-                    variant="ghost"
-                    class="group/terminal-toggle titlebar-icon w-8 h-6 p-0 box-border shrink-0"
-                    onClick={toggleTerminal}
-                    aria-label={language.t("command.terminal.toggle")}
-                    aria-expanded={view().terminal.opened()}
-                    aria-controls="terminal-panel"
-                  >
-                    <Icon size="small" name={view().terminal.opened() ? "terminal-active" : "terminal"} />
-                  </Button>
-                </TooltipKeybind>
-
-                <div class="hidden md:flex items-center gap-1 shrink-0">
+              <Show when={auth.store.user?.role === "admin"}>
+                <div class="flex items-center gap-1">
+                  <Tooltip placement="bottom" value={language.t("status.popover.trigger")}>
+                    <StatusPopover />
+                  </Tooltip>
                   <TooltipKeybind
-                    title={language.t("command.review.toggle")}
-                    keybind={command.keybind("review.toggle")}
+                    title={language.t("command.terminal.toggle")}
+                    keybind={command.keybind("terminal.toggle")}
                   >
                     <Button
                       variant="ghost"
-                      class="group/review-toggle titlebar-icon w-8 h-6 p-0 box-border"
-                      onClick={() => view().reviewPanel.toggle()}
-                      aria-label={language.t("command.review.toggle")}
-                      aria-expanded={view().reviewPanel.opened()}
-                      aria-controls="review-panel"
+                      class="group/terminal-toggle titlebar-icon w-8 h-6 p-0 box-border shrink-0"
+                      onClick={toggleTerminal}
+                      aria-label={language.t("command.terminal.toggle")}
+                      aria-expanded={view().terminal.opened()}
+                      aria-controls="terminal-panel"
                     >
-                      <Icon size="small" name={view().reviewPanel.opened() ? "review-active" : "review"} />
+                      <Icon size="small" name={view().terminal.opened() ? "terminal-active" : "terminal"} />
                     </Button>
                   </TooltipKeybind>
 
-                  <TooltipKeybind
-                    title={language.t("command.fileTree.toggle")}
-                    keybind={command.keybind("fileTree.toggle")}
-                  >
-                    <Button
-                      variant="ghost"
-                      class="titlebar-icon w-8 h-6 p-0 box-border"
-                      onClick={() => layout.fileTree.toggle()}
-                      aria-label={language.t("command.fileTree.toggle")}
-                      aria-expanded={layout.fileTree.opened()}
-                      aria-controls="file-tree-panel"
+                  <div class="hidden md:flex items-center gap-1 shrink-0">
+                    <TooltipKeybind
+                      title={language.t("command.review.toggle")}
+                      keybind={command.keybind("review.toggle")}
                     >
-                      <div class="relative flex items-center justify-center size-4">
-                        <Icon
-                          size="small"
-                          name={layout.fileTree.opened() ? "file-tree-active" : "file-tree"}
-                          classList={{
-                            "text-icon-strong": layout.fileTree.opened(),
-                            "text-icon-weak": !layout.fileTree.opened(),
-                          }}
-                        />
-                      </div>
-                    </Button>
-                  </TooltipKeybind>
+                      <Button
+                        variant="ghost"
+                        class="group/review-toggle titlebar-icon w-8 h-6 p-0 box-border"
+                        onClick={() => view().reviewPanel.toggle()}
+                        aria-label={language.t("command.review.toggle")}
+                        aria-expanded={view().reviewPanel.opened()}
+                        aria-controls="review-panel"
+                      >
+                        <Icon size="small" name={view().reviewPanel.opened() ? "review-active" : "review"} />
+                      </Button>
+                    </TooltipKeybind>
+
+                    <TooltipKeybind
+                      title={language.t("command.fileTree.toggle")}
+                      keybind={command.keybind("fileTree.toggle")}
+                    >
+                      <Button
+                        variant="ghost"
+                        class="titlebar-icon w-8 h-6 p-0 box-border"
+                        onClick={() => layout.fileTree.toggle()}
+                        aria-label={language.t("command.fileTree.toggle")}
+                        aria-expanded={layout.fileTree.opened()}
+                        aria-controls="file-tree-panel"
+                      >
+                        <div class="relative flex items-center justify-center size-4">
+                          <Icon
+                            size="small"
+                            name={layout.fileTree.opened() ? "file-tree-active" : "file-tree"}
+                            classList={{
+                              "text-icon-strong": layout.fileTree.opened(),
+                              "text-icon-weak": !layout.fileTree.opened(),
+                            }}
+                          />
+                        </div>
+                      </Button>
+                    </TooltipKeybind>
+                  </div>
                 </div>
-              </div>
+              </Show>
             </div>
           </Portal>
         )}

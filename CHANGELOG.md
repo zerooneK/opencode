@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-17 (15)
+
+### Hide all titlebar-right icons (status, terminal, review, file tree) for non-admin users
+
+- `packages/app/src/components/session/session-header.tsx` — Wrapped the status popover, terminal toggle, review panel toggle, and file tree toggle icons in the titlebar right section with an admin role check. Non-admin users now see a clean titlebar with only the search bar.
+
+---
+
 ## 2026-04-17 (14)
 
 ### Move debug bar to top-right and add logout button to sidebar
