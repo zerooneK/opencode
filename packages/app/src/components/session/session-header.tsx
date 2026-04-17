@@ -266,8 +266,18 @@ export function SessionHeader() {
 
   const [mounted, setMounted] = createSignal(false)
   onMount(() => setMounted(true))
-  const centerMount = createMemo(() => mounted() && document.getElementById("opencode-titlebar-center"))
-  const rightMount = createMemo(() => mounted() && document.getElementById("opencode-titlebar-right"))
+  const centerMount = createMemo(() => {
+    if (!mounted()) return false
+    const el = document.getElementById("opencode-titlebar-center")
+    if (el) el.textContent = ""
+    return el
+  })
+  const rightMount = createMemo(() => {
+    if (!mounted()) return false
+    const el = document.getElementById("opencode-titlebar-right")
+    if (el) el.textContent = ""
+    return el
+  })
 
   return (
     <>

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-17 (25)
+
+### Fix duplicate search bar and icons in titlebar
+
+**Problem:** The titlebar showed duplicate search bars and duplicate icon buttons (copy path, terminal, review, file tree). The `SessionHeader` component uses SolidJS `Portal` to inject content into `#opencode-titlebar-center` and `#opencode-titlebar-right` divs. When the auth flow causes the Router to re-create, a new `SessionHeader` mounts and appends a second set of portal content — but the old content is never removed.
+
+**Fix:** `packages/app/src/components/session/session-header.tsx` — Clear the portal target element (`el.textContent = ""`) before the `Portal` mounts its content. This ensures any leftover content from a previous mount is removed.
+
+---
+
 ## 2026-04-17 (24)
 
 ### Fix typecheck error in UserAuthMiddleware
