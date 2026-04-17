@@ -168,7 +168,7 @@ export const Terminal = (props: TerminalProps) => {
   const theme = useTheme()
   const language = useLanguage()
   const server = useServer()
-  const auth = useAuth()
+  const userAuth = useAuth()
   const directory = sdk.directory
   const client = sdk.client
   const url = sdk.url
@@ -523,7 +523,7 @@ export const Terminal = (props: TerminalProps) => {
         }
         // WebSocket connections can't send custom headers, so pass the user
         // auth token as a query parameter for UserAuthMiddleware to pick up.
-        const userToken = auth.store.token
+        const userToken = userAuth.store.token
         if (userToken) {
           next.searchParams.set("user_token", userToken)
         }
