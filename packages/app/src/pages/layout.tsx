@@ -2225,12 +2225,16 @@ export default function Layout(props: ParentProps) {
                       </Button>
                     </div>
                     <div class="flex-1 min-h-0">
-                      <LocalWorkspace
-                        ctx={workspaceSidebarCtx}
-                        project={project()!}
-                        sortNow={sortNow}
-                        mobile={panelProps.mobile}
-                      />
+                      <Show when={project()}>
+                        {(p) => (
+                          <LocalWorkspace
+                            ctx={workspaceSidebarCtx}
+                            project={p()}
+                            sortNow={sortNow}
+                            mobile={panelProps.mobile}
+                          />
+                        )}
+                      </Show>
                     </div>
                   </>
                 }
@@ -2266,17 +2270,21 @@ export default function Layout(props: ParentProps) {
                         class="size-full flex flex-col py-2 gap-4 overflow-y-auto no-scrollbar [overflow-anchor:none]"
                       >
                         <SortableProvider ids={workspaces()}>
-                          <For each={workspaces()}>
-                            {(directory) => (
-                              <SortableWorkspace
-                                ctx={workspaceSidebarCtx}
-                                directory={directory}
-                                project={project()!}
-                                sortNow={sortNow}
-                                mobile={panelProps.mobile}
-                              />
+                          <Show when={project()}>
+                            {(p) => (
+                              <For each={workspaces()}>
+                                {(directory) => (
+                                  <SortableWorkspace
+                                    ctx={workspaceSidebarCtx}
+                                    directory={directory}
+                                    project={p()}
+                                    sortNow={sortNow}
+                                    mobile={panelProps.mobile}
+                                  />
+                                )}
+                              </For>
                             )}
-                          </For>
+                          </Show>
                         </SortableProvider>
                       </div>
                       <DragOverlay>

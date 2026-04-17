@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-17 (10)
+
+### Fix TypeError: Cannot read properties of undefined (reading 'worktree')
+
+**Problem:** After signing in, `sidebar-workspace.tsx` crashed with `TypeError: Cannot read properties of undefined (reading 'worktree')`. The `SidebarPanel` in `layout.tsx` passed `project()!` (non-null assertion) to `LocalWorkspace` and `SortableWorkspace`, but `project()` is `Accessor<LocalProject | undefined>` — it returns `undefined` during the brief window after login when sync data hasn't loaded yet.
+
+**Fix:** `packages/app/src/pages/layout.tsx` — Replaced both `project()!` usages with `<Show when={project()}>` guards that use SolidJS callback children `{(p) => ...}` to provide a guaranteed non-null project value. The sidebar components now simply don't render until project data is available.
+
+---
+
 ## 2026-04-17 (9)
 
 ### Fix SDK providers being destroyed when navigating to admin page
