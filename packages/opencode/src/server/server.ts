@@ -51,11 +51,11 @@ export namespace Server {
     return {
       app: app
         .onError(ErrorMiddleware)
+        .use(CorsMiddleware(opts))
         .use(AuthMiddleware)
         .use(UserAuthMiddleware)
         .use(LoggerMiddleware)
         .use(CompressionMiddleware)
-        .use(CorsMiddleware(opts))
         .route("/", ControlPlaneRoutes())
         .route("/", InstanceRoutes(runtime.upgradeWebSocket))
         .route("/", UIRoutes()),

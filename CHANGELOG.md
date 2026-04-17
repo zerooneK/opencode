@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-17 (4)
+
+### Fix CORS + 401 errors on all API calls after login
+
+**Problem:** After logging in, every SDK request from the app failed with CORS errors and 401 Unauthorized. Two bugs caused this:
+1. The SDK client (`createSdkForServer`) never included the user's Bearer token, so all requests were unauthenticated.
+2. `CorsMiddleware` ran *after* `UserAuthMiddleware`, so 401 responses were sent before CORS headers could be added — the browser saw both a CORS error and a 401.
+
+**Fixes:**
+- `packages/opencode/src/server/server.ts` — Moved `CorsMiddleware` before `UserAuthMiddleware` so CORS headers are always present on every response, including errors.
+- `packages/app/src/utils/server.ts` — Wrapped the fetch function in `createSdkForServer` to dynamically read `opencode-user-token` from localStorage and inject `Authorization: Bearer <token>` on every SDK request.
+
+---
+
 ## 2026-04-17 (3)
 
 ### Fix "Sign in" button style on login page
