@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-17 (23)
+
+### Fix typecheck error in authenticatedFetch
+
+- `packages/app/src/utils/server.ts` — Bun's `fetch` type now requires a `preconnect` static property. Changed from inline `typeof fetch` annotation to `as typeof fetch` cast to satisfy the type checker.
+
+---
+
 ## 2026-04-17 (22)
 
 ### Remove file explorer panel feature

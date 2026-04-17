@@ -15,7 +15,7 @@ export function createSdkForServer({
   })()
 
   const baseFetch = config.fetch ?? globalThis.fetch.bind(globalThis)
-  const authenticatedFetch: typeof fetch = (input, init) => {
+  const authenticatedFetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const isRequest = input instanceof Request
     const headers = isRequest ? new Headers((input as Request).headers) : new Headers(init?.headers)
     if (!headers.has("Authorization")) {
@@ -25,7 +25,7 @@ export function createSdkForServer({
     }
     if (isRequest) return baseFetch(new Request(input as Request, { headers }))
     return baseFetch(input, { ...init, headers })
-  }
+  }) as typeof fetch
 
   const staticHeaders = {
     ...(config.headers instanceof Headers ? Object.fromEntries(config.headers.entries()) : config.headers),
