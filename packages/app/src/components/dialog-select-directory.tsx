@@ -10,6 +10,7 @@ import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLayout } from "@/context/layout"
 import { useLanguage } from "@/context/language"
+import { useAuth } from "@/context/auth"
 
 interface DialogSelectDirectoryProps {
   title?: string
@@ -251,11 +252,17 @@ export function DialogSelectDirectory(props: DialogSelectDirectoryProps) {
   const layout = useLayout()
   const dialog = useDialog()
   const language = useLanguage()
+  const auth = useAuth()
 
   const [filter, setFilter] = createSignal("")
   let list: ListRef | undefined
 
-  const missingBase = createMemo(() => !(sync.data.path.home || sync.data.path.directory))
+  // Regular users start from their workspace directory
+  const userWorkspaceDir = createMemo(() =>
+    auth.store.user?.role === "user" ? auth.store.user.workspaceDir : undefined,
+  )
+
+  const missingBase = createMemo(() => !(userWorkspaceDir() || sync.data.path.home || sync.data.path.directory))
   const [fallbackPath] = createResource(
     () => (missingBase() ? true : undefined),
     async () => {
@@ -267,9 +274,14 @@ export function DialogSelectDirectory(props: DialogSelectDirectoryProps) {
     { initialValue: undefined },
   )
 
-  const home = createMemo(() => sync.data.path.home || fallbackPath()?.home || "")
+  const home = createMemo(() => userWorkspaceDir() || sync.data.path.home || fallbackPath()?.home || "")
   const start = createMemo(
-    () => sync.data.path.home || sync.data.path.directory || fallbackPath()?.home || fallbackPath()?.directory,
+    () =>
+      userWorkspaceDir() ||
+      sync.data.path.home ||
+      sync.data.path.directory ||
+      fallbackPath()?.home ||
+      fallbackPath()?.directory,
   )
 
   const directories = useDirectorySearch({

@@ -131,9 +131,17 @@ export const WorkspaceAccessMiddleware: MiddlewareHandler = async (c, next) => {
   // No user or admin — allow everything
   if (!user || user.role === "admin") return next()
 
-  // Check if request has a directory parameter
-  const directory = c.req.query("directory") || c.req.header("x-opencode-directory")
-  if (!directory) return next()
+  // Check if request has a directory parameter (decode URI-encoded header values)
+  const rawDirectory = c.req.query("directory") || c.req.header("x-opencode-directory")
+  if (!rawDirectory) return next()
+
+  const directory = (() => {
+    try {
+      return decodeURIComponent(rawDirectory)
+    } catch {
+      return rawDirectory
+    }
+  })()
 
   // Resolve the requested directory to an absolute path
   const resolved = path.resolve(directory)

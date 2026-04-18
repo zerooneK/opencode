@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-18 (36)
+
+### Fix: workspace access middleware blocking all requests for regular users
+
+**Problem:** Regular users got 403 "Access denied" errors on all requests (can't create sessions, can't send messages). Two causes:
+
+1. **URL-encoded directory header not decoded** — The SDK sends the `x-opencode-directory` header as `encodeURIComponent(path)`, but the middleware didn't decode it. So `%2Fhome%2Fzeroone%2Fworkspaces%2Fuser%2F...` was treated as a relative path by `path.resolve()`, failing the workspace prefix check.
+2. **Directory picker using wrong starting directory** — The directory picker dialog started from the server's home directory (`/home/zeroone`) instead of the user's workspace directory, causing 403 errors from the `/find/file` endpoint.
+
+**Fixes:**
+- `packages/opencode/src/server/middleware.ts` — Added `decodeURIComponent()` to the directory extraction in `WorkspaceAccessMiddleware`, matching how `WorkspaceRouterMiddleware` already handles it.
+- `packages/app/src/components/dialog-select-directory.tsx` — Regular users now start browsing from their workspace directory instead of the server's home directory.
+
+---
+
 ## 2026-04-18 (35)
 
 ### Show titlebar icons for all users, not just admin
