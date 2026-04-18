@@ -23,6 +23,22 @@ function getDefaultWorkspace(username: string): string {
   return path.join(WORKSPACES_DIR, username, DEFAULT_WORKSPACE_NAME)
 }
 
+async function renameUserWorkspace(username: string): Promise<void> {
+  const userDir = path.join(WORKSPACES_DIR, username)
+  const exists = await fs.stat(userDir).catch(() => null)
+  if (!exists) return
+  const date = new Date().toISOString().slice(0, 10)
+  const baseName = `${username}_deleted_${date}`
+  let target = path.join(WORKSPACES_DIR, baseName)
+  // Handle multiple deletions on the same day
+  let suffix = 1
+  while (await fs.stat(target).catch(() => null)) {
+    target = path.join(WORKSPACES_DIR, `${baseName}_${suffix}`)
+    suffix++
+  }
+  await fs.rename(userDir, target)
+}
+
 function requireUser(authHeader: string | undefined) {
   const token = UserAuth.extractToken(authHeader)
   if (!token) return
@@ -100,10 +116,12 @@ export function UserAuthRoutes(): Hono {
         return c.json({ id, username, role: existingRole, workspaceDir })
       },
     )
-    .delete("/user/:id", (c) => {
+    .delete("/user/:id", async (c) => {
       const admin = requireAdmin(c.req.header("Authorization"))
       if (!admin) return c.json({ error: "Forbidden" }, 403)
       if (c.req.param("id") === admin.id) return c.json({ error: "Cannot delete yourself" }, 400)
+      const user = UserAuth.findById(c.req.param("id"))
+      if (user) await renameUserWorkspace(user.username)
       UserAuth.deleteUser(c.req.param("id"))
       return c.json(true)
     })

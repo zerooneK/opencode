@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-04-18 (30)
+
+### Rename workspace folder on user deletion
+
+When admin deletes a user, the workspace folder is renamed from `boy/` to `boy_deleted_2026-04-18/` instead of being deleted. This protects data and prevents a newly created user with the same username from seeing the old user's files.
+
+- Handles multiple deletions on the same day (`boy_deleted_2026-04-18_1`, `_2`, etc.)
+- If the folder doesn't exist, does nothing (no error)
+- Files are preserved — admin can access them via SSH
+
+---
+
 ## 2026-04-18 (29)
 
 ### Step 2: Auto-redirect user to their workspace after login
