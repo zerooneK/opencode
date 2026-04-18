@@ -1,7 +1,6 @@
 import { createContext, useContext, createResource, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useServer } from "./server"
-import { Persist, removePersisted } from "@/utils/persist"
 
 type User = {
   id: string
@@ -79,12 +78,33 @@ function AuthContext() {
   }
 
   const logout = async () => {
-    await authFetch("/user/logout", { method: "POST" })
+    await authFetch("/user/logout", { method: "POST" }).catch(() => {})
     localStorage.removeItem(TOKEN_KEY)
-    // Clear persisted layout and server data so next user starts fresh
-    removePersisted(Persist.global("server", ["server.v3"]))
-    removePersisted(Persist.global("layout", ["layout.v6"]))
-    setStore({ user: null, token: null, loading: false })
+    // Clear every app-owned localStorage key (global + per-workspace) so the
+    // next user never sees the previous user's sidebar, layout, or cached data.
+    clearAppLocalStorage()
+    // Full page reload to reset all in-memory SolidJS stores. Without this,
+    // providers like ServerProvider (mounted above the auth Show gate) still
+    // hold the previous user's data in memory even after localStorage is cleared.
+    window.location.replace("/login")
+  }
+
+  // Remove every key persisted by the app. Based on the storage prefixes in
+  // utils/persist.ts: Persist.global uses "opencode.global.dat:", workspace
+  // stores use "opencode.workspace.<head>.<sum>.dat:", legacy used "default.dat:".
+  const clearAppLocalStorage = () => {
+    const prefixes = ["opencode.global.dat:", "opencode.workspace.", "default.dat:"]
+    const victims: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key) continue
+      if (prefixes.some((prefix) => key.startsWith(prefix))) victims.push(key)
+    }
+    for (const key of victims) {
+      try {
+        localStorage.removeItem(key)
+      } catch {}
+    }
   }
 
   const listUsers = async (): Promise<User[]> => {

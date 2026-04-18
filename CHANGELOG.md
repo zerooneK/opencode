@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-04-18 (41)
+
+### Fix: regular user still sees admin's workspaces after admin logs out
+
+**Problem:** After admin logs out and a regular user logs in on the same browser tab, the sidebar showed the admin's workspaces (e.g. `~/workspaces/admin/my-first-proj…`). Clicking them gave "Access denied — you can only access your own workspace".
+
+**Root cause:** The old `logout()` only cleared a couple of `localStorage` keys (`server.v3`, `layout.v6`) but did NOT reset the in-memory SolidJS stores. `ServerProvider` is mounted above the auth `<Show>` gate and stays alive across login/logout, so `server.projects` kept holding the admin's list in memory. When the user logged in, that state leaked straight into the sidebar.
+
+Additional leaks we weren't clearing: `layout.page.v1` (workspace names, expansion state), `globalSync.project.v1` (cached project metadata), prompt history, model selection, permission cache, comments, command catalog.
+
+**Fix:** `packages/app/src/context/auth.tsx`
+- `logout()` now wipes every localStorage key that starts with `opencode.global.dat:`, `opencode.workspace.`, or `default.dat:` (the three prefixes used by `Persist.global` / workspace stores / legacy).
+- Then does a hard `window.location.replace("/login")`. A full page reload is the only reliable way to reset in-memory stores that live above the auth gate.
+
+---
+
 ## 2026-04-18 (40)
 
 ### Feat: render HTML files as a webpage instead of source code
