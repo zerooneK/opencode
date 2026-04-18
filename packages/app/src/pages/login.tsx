@@ -1,7 +1,14 @@
 import { createEffect, createSignal, Show } from "solid-js"
 import { useNavigate } from "@solidjs/router"
+import { base64Encode } from "@opencode-ai/shared/util/encode"
 import { useAuth } from "@/context/auth"
 import { Splash } from "@opencode-ai/ui/logo"
+
+function getUserRedirectPath(auth: ReturnType<typeof useAuth>): string {
+  const workspace = auth.store.user?.defaultWorkspace
+  if (workspace) return `/${base64Encode(workspace)}/session`
+  return "/"
+}
 
 export default function LoginPage() {
   const auth = useAuth()
@@ -10,7 +17,7 @@ export default function LoginPage() {
   // redirect to home immediately.
   createEffect(() => {
     if (!auth.store.loading && auth.store.user) {
-      navigate("/", { replace: true })
+      navigate(getUserRedirectPath(auth), { replace: true })
     }
   })
 
@@ -29,7 +36,7 @@ export default function LoginPage() {
       setError(err)
       return
     }
-    navigate("/", { replace: true })
+    navigate(getUserRedirectPath(auth), { replace: true })
   }
 
   return (

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-18 (29)
+
+### Step 2: Auto-redirect user to their workspace after login
+
+After login, users are now redirected to their default workspace (`/my-first-project/session`) instead of the home page. This means new users land directly in their workspace and can start chatting immediately.
+
+- `packages/app/src/context/auth.tsx` — `User` type now includes `workspaceDir` and `defaultWorkspace`. Login and `/user/me` responses store these values.
+- `packages/app/src/pages/login.tsx` — After login, redirects to `/<base64(defaultWorkspace)>/session` instead of `/`. Falls back to `/` if no workspace exists (e.g. admin).
+
+---
+
 ## 2026-04-18 (28)
 
 ### Step 1: Auto-create workspace folder on user creation

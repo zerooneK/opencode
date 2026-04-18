@@ -6,6 +6,8 @@ type User = {
   id: string
   username: string
   role: "admin" | "user"
+  workspaceDir?: string
+  defaultWorkspace?: string
 }
 
 type AuthStore = {
@@ -53,7 +55,8 @@ function AuthContext() {
       setStore({ user: null, token: null, loading: false })
       return
     }
-    const user = (await res.json()) as User
+    const data = (await res.json()) as User & { workspaceDir?: string; defaultWorkspace?: string }
+    const user: User = { id: data.id, username: data.username, role: data.role, workspaceDir: data.workspaceDir, defaultWorkspace: data.defaultWorkspace }
     setStore({ user, loading: false })
   })
 
@@ -67,9 +70,10 @@ function AuthContext() {
       const data = (await res.json()) as { error?: string }
       return data.error ?? "Login failed"
     }
-    const data = (await res.json()) as { token: string; user: User }
+    const data = (await res.json()) as { token: string; user: User; workspaceDir?: string; defaultWorkspace?: string }
     localStorage.setItem(TOKEN_KEY, data.token)
-    setStore({ user: data.user, token: data.token, loading: false })
+    const user = { ...data.user, workspaceDir: data.workspaceDir, defaultWorkspace: data.defaultWorkspace }
+    setStore({ user, token: data.token, loading: false })
     return undefined
   }
 
