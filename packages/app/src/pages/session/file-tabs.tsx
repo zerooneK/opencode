@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, Match, on, onCleanup, Switch } from "solid-js"
+import { createEffect, createMemo, createSignal, Match, on, onCleanup, Show, Switch } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import { makeEventListener } from "@solid-primitives/event-listener"
@@ -7,6 +7,7 @@ import { useFileComponent } from "@opencode-ai/ui/context/file"
 import { cloneSelectedLineRange, previewSelectedLines } from "@opencode-ai/ui/pierre/selection-bridge"
 import { createLineCommentController } from "@opencode-ai/ui/line-comment-annotations"
 import { sampledChecksum } from "@opencode-ai/shared/util/encode"
+import { Button } from "@opencode-ai/ui/button"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tabs } from "@opencode-ai/ui/tabs"
@@ -200,6 +201,13 @@ export function FileTabContent(props: { tab: string }) {
   })
   const contents = createMemo(() => state()?.content?.content ?? "")
   const cacheKey = createMemo(() => sampledChecksum(contents()))
+
+  const isHtmlFile = createMemo(() => {
+    const p = path()
+    if (!p) return false
+    return /\.html?$/i.test(p)
+  })
+  const [htmlViewMode, setHtmlViewMode] = createSignal<"preview" | "code">("preview")
   const selectedLines = createMemo<SelectedLineRange | null>(() => {
     const p = path()
     if (!p) return null
@@ -440,17 +448,53 @@ export function FileTabContent(props: { tab: string }) {
     </div>
   )
 
+  const renderHtmlPreview = (source: string) => (
+    <div class="relative h-full w-full bg-white">
+      <iframe
+        title={path() ?? "html preview"}
+        srcdoc={source}
+        sandbox="allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
+        class="w-full h-full border-0 bg-white"
+      />
+    </div>
+  )
+
   return (
     <Tabs.Content value={props.tab} class="mt-3 relative h-full">
-      <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll as any}>
-        <Switch>
-          <Match when={state()?.loaded}>{renderFile(contents())}</Match>
-          <Match when={state()?.loading}>
-            <div class="px-6 py-4 text-text-weak">{language.t("common.loading")}...</div>
-          </Match>
-          <Match when={state()?.error}>{(err) => <div class="px-6 py-4 text-text-weak">{err()}</div>}</Match>
-        </Switch>
-      </ScrollView>
+      <Show when={isHtmlFile() && state()?.loaded}>
+        <div class="sticky top-0 z-10 flex items-center justify-end gap-1 px-2 py-1 bg-background-base border-b border-border-weak-base">
+          <Button
+            size="small"
+            variant={htmlViewMode() === "preview" ? "secondary" : "ghost"}
+            onClick={() => setHtmlViewMode("preview")}
+          >
+            {language.t("session.file.htmlView.preview")}
+          </Button>
+          <Button
+            size="small"
+            variant={htmlViewMode() === "code" ? "secondary" : "ghost"}
+            onClick={() => setHtmlViewMode("code")}
+          >
+            {language.t("session.file.htmlView.code")}
+          </Button>
+        </div>
+      </Show>
+      <Show
+        when={isHtmlFile() && htmlViewMode() === "preview" && state()?.loaded}
+        fallback={
+          <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll as any}>
+            <Switch>
+              <Match when={state()?.loaded}>{renderFile(contents())}</Match>
+              <Match when={state()?.loading}>
+                <div class="px-6 py-4 text-text-weak">{language.t("common.loading")}...</div>
+              </Match>
+              <Match when={state()?.error}>{(err) => <div class="px-6 py-4 text-text-weak">{err()}</div>}</Match>
+            </Switch>
+          </ScrollView>
+        }
+      >
+        {renderHtmlPreview(contents())}
+      </Show>
     </Tabs.Content>
   )
 }

@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-18 (40)
+
+### Feat: render HTML files as a webpage instead of source code
+
+**Problem:** Clicking an HTML file (e.g. an AI-generated report) showed raw HTML source highlighted as code. For non-tech users that wanted to see the webpage (fonts, colors, layout), this was the opposite of useful.
+
+**Fix:** When the opened file path ends in `.html` or `.htm`, render it inside a sandboxed `<iframe srcdoc>` by default. A small `Preview / Code` toggle at the top of the tab lets users switch back to the source view if they want to inspect markup.
+
+- `packages/app/src/pages/session/file-tabs.tsx` — detect `.html` / `.htm`, render iframe in preview mode, show toggle buttons; sandbox: `allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox` (no `allow-same-origin`, so the iframe cannot touch parent cookies/storage).
+- `packages/app/src/i18n/en.ts` + `th.ts` — new keys `session.file.htmlView.preview` ("Preview" / "แสดงผล") and `session.file.htmlView.code` ("Code" / "โค้ด").
+
+Default mode is "preview" because that's what a non-tech user expects; both modes are available to all users.
+
+---
+
 ## 2026-04-18 (39)
 
 ### Fix: regular users can now preview files by clicking
