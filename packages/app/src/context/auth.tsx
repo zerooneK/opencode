@@ -1,6 +1,7 @@
 import { createContext, useContext, createResource, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useServer } from "./server"
+import { Persist, removePersisted } from "@/utils/persist"
 
 type User = {
   id: string
@@ -80,6 +81,9 @@ function AuthContext() {
   const logout = async () => {
     await authFetch("/user/logout", { method: "POST" })
     localStorage.removeItem(TOKEN_KEY)
+    // Clear persisted layout and server data so next user starts fresh
+    removePersisted(Persist.global("server", ["server.v3"]))
+    removePersisted(Persist.global("layout", ["layout.v6"]))
     setStore({ user: null, token: null, loading: false })
   }
 

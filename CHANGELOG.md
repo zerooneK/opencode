@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-04-18 (34)
+
+### Fix: new user redirected to previous user's workspace after login
+
+**Problem:** After logging out and logging in as a different user, the app redirected to the previous user's workspace instead of the new user's workspace. This happened because the layout auto-select logic (`autoselecting` in `layout.tsx`) reads `server.projects.last()` from localStorage, which still had the old user's data.
+
+**Fix:** On logout, clear the persisted server and layout data from localStorage so the next user starts with a clean state.
+
+- `packages/app/src/context/auth.tsx` — `logout()` now calls `removePersisted()` for server and layout stores.
+
+---
+
 ## 2026-04-18 (33)
 
 ### Auto-create workspace folder on login for existing users
