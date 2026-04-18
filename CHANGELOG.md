@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-18 (27)
+
+### Add systemd deployment files
+
+Added `deploy/` folder with systemd service files and a setup script for running OpenCode on a Linux server:
+- `opencode-backend.service` — runs the backend API (port 4096), auto-restarts on crash
+- `opencode-web.service` — runs the web UI (port 3927), depends on backend, auto-restarts on crash
+- `setup.sh` — installs both services, replaces placeholder values with actual server config
+
+---
+
 ## 2026-04-17 (26)
 
 ### Fix review panel auto-opening for non-admin users
