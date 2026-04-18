@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-18 (33)
+
+### Auto-create workspace folder on login for existing users
+
+The login endpoint now ensures the user's workspace folder exists before returning. This handles users that were created before the workspace feature was added — their folder is automatically created on first login after the update.
+
+---
+
 ## 2026-04-18 (32)
 
 ### Step 4: Add workspace management UI and API

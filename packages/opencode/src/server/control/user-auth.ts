@@ -62,10 +62,12 @@ export function UserAuthRoutes(): Hono {
           password: z.string().min(1),
         }),
       ),
-      (c) => {
+      async (c) => {
         const { username, password } = c.req.valid("json")
         const result = UserAuth.login(username, password)
         if (!result) return c.json({ error: "Invalid username or password" }, 401)
+        // Ensure workspace folder exists (handles users created before this feature)
+        await createUserWorkspace(username)
         return c.json({
           ...result,
           workspaceDir: getUserWorkspaceDir(username),
