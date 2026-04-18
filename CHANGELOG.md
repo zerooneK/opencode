@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-18 (31)
+
+### Step 3: Restrict regular users to their own workspace folder
+
+Regular users (non-admin) can now only access directories inside their own workspace folder (`/workspaces/<username>/`). Admin users have no restriction.
+
+- `packages/opencode/src/server/middleware.ts` — Added `WorkspaceAccessMiddleware` that checks the `directory` query param against the user's allowed workspace path. Returns 403 if a regular user tries to access another user's folder or any other server directory.
+- `packages/opencode/src/server/server.ts` — Added `WorkspaceAccessMiddleware` to the middleware chain after `UserAuthMiddleware`.
+
+---
+
 ## 2026-04-18 (30)
 
 ### Rename workspace folder on user deletion

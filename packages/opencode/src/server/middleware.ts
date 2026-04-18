@@ -11,6 +11,8 @@ import { basicAuth } from "hono/basic-auth"
 import { cors } from "hono/cors"
 import { compress } from "hono/compress"
 import { UserAuth } from "@/auth/user"
+import path from "path"
+import os from "os"
 
 const log = Log.create({ service: "server" })
 
@@ -97,11 +99,59 @@ export const UserAuthMiddleware: MiddlewareHandler = async (c, next) => {
   return next()
 }
 
+const WORKSPACES_DIR = process.env.OPENCODE_WORKSPACES_DIR || path.join(os.homedir(), "workspaces")
+
+// Paths that don't involve directory access — skip workspace restriction
+const WORKSPACE_SKIP_PATHS = new Set([
+  "/user/login",
+  "/user/create",
+  "/user/logout",
+  "/user/me",
+  "/user/list",
+  "/global/event",
+  "/event",
+  "/log",
+  "/doc",
+])
+
+export const WorkspaceAccessMiddleware: MiddlewareHandler = async (c, next) => {
+  if (c.req.method === "OPTIONS") return next()
+
+  const reqPath = c.req.path
+  if (WORKSPACE_SKIP_PATHS.has(reqPath)) return next()
+  // Skip user management routes (e.g. /user/:id, /user/:id/role)
+  if (reqPath.startsWith("/user/")) return next()
+  // Skip auth routes
+  if (reqPath.startsWith("/auth/")) return next()
+
+  // Get the authenticated user
+  const token = UserAuth.extractToken(c.req.header("Authorization")) ?? c.req.query("user_token")
+  const user = token ? UserAuth.validateSession(token) : undefined
+
+  // No user or admin — allow everything
+  if (!user || user.role === "admin") return next()
+
+  // Check if request has a directory parameter
+  const directory = c.req.query("directory") || c.req.header("x-opencode-directory")
+  if (!directory) return next()
+
+  // Resolve the requested directory to an absolute path
+  const resolved = path.resolve(directory)
+  const userWorkspace = path.join(WORKSPACES_DIR, user.username)
+
+  // Regular users can only access their own workspace folder
+  if (!resolved.startsWith(userWorkspace + path.sep) && resolved !== userWorkspace) {
+    return c.json({ error: "Access denied: you can only access your own workspace" }, 403)
+  }
+
+  return next()
+}
+
 const zipped = compress()
 export const CompressionMiddleware: MiddlewareHandler = (c, next) => {
-  const path = c.req.path
+  const reqPath = c.req.path
   const method = c.req.method
-  if (path === "/event" || path === "/global/event") return next()
-  if (method === "POST" && /\/session\/[^/]+\/(message|prompt_async)$/.test(path)) return next()
+  if (reqPath === "/event" || reqPath === "/global/event") return next()
+  if (method === "POST" && /\/session\/[^/]+\/(message|prompt_async)$/.test(reqPath)) return next()
   return zipped(c, next)
 }

@@ -3,7 +3,7 @@ import { Hono } from "hono"
 import { adapter } from "#hono"
 import { MDNS } from "./mdns"
 import { lazy } from "@/util/lazy"
-import { AuthMiddleware, CompressionMiddleware, CorsMiddleware, ErrorMiddleware, LoggerMiddleware, UserAuthMiddleware } from "./middleware"
+import { AuthMiddleware, CompressionMiddleware, CorsMiddleware, ErrorMiddleware, LoggerMiddleware, UserAuthMiddleware, WorkspaceAccessMiddleware } from "./middleware"
 import { FenceMiddleware } from "./fence"
 import { InstanceRoutes } from "./instance"
 import { initProjectors } from "./projectors"
@@ -54,6 +54,7 @@ export namespace Server {
         .use(CorsMiddleware(opts))
         .use(AuthMiddleware)
         .use(UserAuthMiddleware)
+        .use(WorkspaceAccessMiddleware)
         .use(LoggerMiddleware)
         .use(CompressionMiddleware)
         .route("/", ControlPlaneRoutes())
