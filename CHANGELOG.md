@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-18 (35)
+
+### Show titlebar icons for all users, not just admin
+
+Removed admin-only restriction on titlebar icons (copy path, terminal, review, file tree). All users can now see and use these features.
+
+---
+
 ## 2026-04-18 (34)
 
 ### Fix: new user redirected to previous user's workspace after login
