@@ -597,6 +597,20 @@ export default function Layout(props: ParentProps) {
     }
   })
 
+  // When the URL contains a project directory that isn't yet in the sidebar
+  // (e.g. login redirect to user workspace, bookmarks, page refresh),
+  // add it to the sidebar so the user sees their open project.
+  createEffect(() => {
+    if (!pageReady()) return
+    if (!layoutReady()) return
+    if (!globalSync.ready) return
+    const dir = currentDir()
+    if (!dir) return
+    const list = layout.projects.list()
+    if (list.some((p) => p.worktree === dir || p.sandboxes?.includes(dir))) return
+    void openProject(dir, false)
+  })
+
   const workspaceName = (directory: string, projectId?: string, branch?: string) => {
     const key = workspaceKey(directory)
     const direct = store.workspaceName[key] ?? store.workspaceName[directory]

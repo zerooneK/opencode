@@ -238,7 +238,7 @@ export async function bootstrapDirectory(input: {
   ;(async () => {
     const slow = [
       () =>
-        input.queryClient.ensureQueryData({
+        input.queryClient.fetchQuery({
           ...loadAgentsQuery(input.directory),
           queryFn: () =>
             retry(() => input.sdk.app.agents().then((x) => input.setStore("agent", normalizeAgentList(x.data)))).then(

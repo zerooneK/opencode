@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-18 (37)
+
+### Fix: empty sidebar and missing agent list after login redirect
+
+**Problem (Bug 1 — empty sidebar):** After login, regular users were redirected to their workspace URL (`/<base64(dir)>/session`). The sidebar stayed empty because nothing called `layout.projects.open(dir)` — the login redirect only navigated. The existing `autoselecting` logic is skipped whenever the URL already contains a directory (`state.autoselect = !initialDirectory`).
+
+**Problem (Bug 2 — "Select an agent and model" toast on send):** The agents request (`GET /agent`) was never fired for regular users. In `bootstrapDirectory`, agents were loaded via `queryClient.ensureQueryData`, while every other slow task uses a direct `retry(...)` call or `fetchQuery`. `PromptInput` also calls `useQuery(loadAgentsQuery, { queryFn: skipToken })` for loading state, which registers the query as "tracked" in the cache before bootstrap runs. `ensureQueryData` then treated the tracked query as already-ensured and skipped the real fetch, so `sync.data.agent` stayed empty and `local.agent.current()` returned `undefined`.
+
+**Fixes:**
+- `packages/app/src/pages/layout.tsx` — Added a `createEffect` that auto-opens the project when the URL contains a directory not already in `layout.projects.list()`. Covers login redirect, bookmarks, and page refresh.
+- `packages/app/src/context/global-sync/bootstrap.ts` — Changed agents slow task from `ensureQueryData` to `fetchQuery`, matching the providers pattern. `fetchQuery` always runs the provided `queryFn`.
+
+---
+
 ## 2026-04-18 (36)
 
 ### Fix: workspace access middleware blocking all requests for regular users
