@@ -11,6 +11,7 @@ import { ConstrainDragYAxis, getDraggableId } from "@/utils/solid-dnd"
 
 import { SortableTerminalTab } from "@/components/session"
 import { Terminal } from "@/components/terminal"
+import { useAuth } from "@/context/auth"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
@@ -26,9 +27,11 @@ export function TerminalPanel() {
   const terminal = useTerminal()
   const language = useLanguage()
   const command = useCommand()
+  const auth = useAuth()
   const { params, view } = useSessionLayout()
 
-  const opened = createMemo(() => view().terminal.opened())
+  const isRegularUser = createMemo(() => auth.store.user?.role === "user")
+  const opened = createMemo(() => !isRegularUser() && view().terminal.opened())
   const size = createSizing()
   const height = createMemo(() => layout.terminal.height())
   const close = () => view().terminal.close()

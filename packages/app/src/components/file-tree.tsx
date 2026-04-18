@@ -200,6 +200,7 @@ export default function FileTree(props: {
   modified?: readonly string[]
   kinds?: ReadonlyMap<string, Kind>
   draggable?: boolean
+  hideHidden?: boolean
   onFileClick?: (file: FileNode) => void
 
   _filter?: Filter
@@ -325,9 +326,10 @@ export default function FileTree(props: {
   )
 
   const nodes = createMemo(() => {
-    const nodes = file.tree.children(props.path)
+    const raw = file.tree.children(props.path)
+    const all = props.hideHidden ? raw.filter((node) => !node.name.startsWith(".")) : raw
     const current = filter()
-    if (!current) return nodes
+    if (!current) return all
 
     const parent = (path: string) => {
       const idx = path.lastIndexOf("/")
@@ -340,7 +342,7 @@ export default function FileTree(props: {
       return idx === -1 ? path : path.slice(idx + 1)
     }
 
-    const out = nodes.filter((node) => {
+    const out = all.filter((node) => {
       if (node.type === "file") return current.files.has(node.path)
       return current.dirs.has(node.path)
     })
@@ -439,6 +441,7 @@ export default function FileTree(props: {
                         kinds={props.kinds}
                         active={props.active}
                         draggable={props.draggable}
+                        hideHidden={props.hideHidden}
                         onFileClick={props.onFileClick}
                         _filter={filter()}
                         _marks={marks()}

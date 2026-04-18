@@ -15,6 +15,7 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import FileTree from "@/components/file-tree"
 import { SessionContextUsage } from "@/components/session-context-usage"
 import { SessionContextTab, SortableTab, FileVisual } from "@/components/session"
+import { useAuth } from "@/context/auth"
 import { useCommand } from "@/context/command"
 import { useFile, type SelectedLineRange } from "@/context/file"
 import { useLanguage } from "@/context/language"
@@ -43,11 +44,13 @@ export function SessionSidePanel(props: {
   const language = useLanguage()
   const command = useCommand()
   const dialog = useDialog()
+  const auth = useAuth()
   const { sessionKey, tabs, view } = useSessionLayout()
 
   const isDesktop = createMediaQuery("(min-width: 768px)")
+  const isRegularUser = createMemo(() => auth.store.user?.role === "user")
 
-  const reviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
+  const reviewOpen = createMemo(() => !isRegularUser() && isDesktop() && view().reviewPanel.opened())
   const fileOpen = createMemo(() => isDesktop() && layout.fileTree.opened())
   const open = createMemo(() => reviewOpen() || fileOpen())
   const reviewTab = createMemo(() => isDesktop())
@@ -130,10 +133,14 @@ export function SessionSidePanel(props: {
   const activeTab = tabState.activeTab
   const activeFileTab = tabState.activeFileTab
 
-  const fileTreeTab = () => layout.fileTree.tab()
+  const fileTreeTab = () => {
+    if (isRegularUser()) return "all"
+    return layout.fileTree.tab()
+  }
 
   const setFileTreeTabValue = (value: string) => {
     if (value !== "changes" && value !== "all") return
+    if (isRegularUser() && value !== "all") return
     layout.fileTree.setTab(value)
   }
 
@@ -365,12 +372,14 @@ export function SessionSidePanel(props: {
                 data-scope="filetree"
               >
                 <Tabs.List>
-                  <Tabs.Trigger value="changes" class="flex-1" classes={{ button: "w-full" }}>
-                    {props.reviewCount()}{" "}
-                    {language.t(
-                      props.reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other",
-                    )}
-                  </Tabs.Trigger>
+                  <Show when={!isRegularUser()}>
+                    <Tabs.Trigger value="changes" class="flex-1" classes={{ button: "w-full" }}>
+                      {props.reviewCount()}{" "}
+                      {language.t(
+                        props.reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other",
+                      )}
+                    </Tabs.Trigger>
+                  </Show>
                   <Tabs.Trigger value="all" class="flex-1" classes={{ button: "w-full" }}>
                     {language.t("session.files.all")}
                   </Tabs.Trigger>
@@ -408,8 +417,9 @@ export function SessionSidePanel(props: {
                       <FileTree
                         path=""
                         class="pt-3"
-                        modified={diffFiles()}
-                        kinds={kinds()}
+                        modified={isRegularUser() ? undefined : diffFiles()}
+                        kinds={isRegularUser() ? undefined : kinds()}
+                        hideHidden={isRegularUser()}
                         onFileClick={(node) => openTab(file.tab(node.path))}
                       />
                     </Match>

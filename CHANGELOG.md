@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-04-18 (38)
+
+### Topic 2: Hide developer UI for regular users
+
+Simplify the interface for non-admin users so the app feels like a plain chat tool instead of a developer environment. Regular users (role=user) no longer see Git, terminal, or code-review features. Admins keep the full UI.
+
+**Hidden from regular users:**
+- Terminal button in titlebar (`session-header.tsx`)
+- Terminal panel (even if state was previously opened as admin)
+- Review button in titlebar
+- Review panel rendering (forces closed; blocks "Create Git repository" card, "Latest turn changes", diff viewer)
+- Branch display on new-session view ("main branch / สาขาหลัก" + full directory path)
+- File-tree "Changes" tab (only shows "All files")
+- VCS indicators (A/D/M badges and dot colors) next to file names
+- Hidden files and folders (anything starting with ".") like `.git`, `.opencode`, `.env`
+
+**Files changed:**
+- `packages/app/src/components/session/session-header.tsx` — wrap terminal + review buttons in `<Show when={!isRegularUser()}>`
+- `packages/app/src/pages/session.tsx` — `desktopReviewOpen` returns false for regular users
+- `packages/app/src/pages/session/session-side-panel.tsx` — hide "Changes" tab, pass no `modified`/`kinds` to FileTree for users, set `hideHidden={true}`, force "all" tab
+- `packages/app/src/pages/session/terminal-panel.tsx` — `opened` returns false for regular users
+- `packages/app/src/components/session/session-new-view.tsx` — hide branch + full path for regular users, show only workspace name
+- `packages/app/src/components/file-tree.tsx` — add `hideHidden?: boolean` prop; filters nodes whose names start with "."
+
+The underlying state (reviewPanel.opened, terminal.opened, fileTree.tab) is not cleared, so re-promoting a user to admin restores the exact previous layout.
+
+---
+
 ## 2026-04-18 (37)
 
 ### Fix: empty sidebar and missing agent list after login redirect
