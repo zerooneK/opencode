@@ -26,15 +26,19 @@ SERVER_IP="${OPENCODE_IP:-127.0.0.1}"
 # Path to bun binary
 BUN_PATH="${OPENCODE_BUN:-$(which bun 2>/dev/null || echo "/home/$USER_NAME/.bun/bin/bun")}"
 
+# Workspaces directory (where user workspaces are stored)
+WORKSPACES_DIR="${OPENCODE_WORKSPACES_DIR:-/home/$USER_NAME/workspaces}"
+
 # ------------------------------------------
 
 echo ""
 echo "=== OpenCode Deployment Setup ==="
 echo ""
-echo "  User:        $USER_NAME"
-echo "  Project dir: $PROJECT_DIR"
-echo "  Server IP:   $SERVER_IP"
-echo "  Bun path:    $BUN_PATH"
+echo "  User:          $USER_NAME"
+echo "  Project dir:   $PROJECT_DIR"
+echo "  Server IP:     $SERVER_IP"
+echo "  Bun path:      $BUN_PATH"
+echo "  Workspaces:    $WORKSPACES_DIR"
 echo ""
 
 # Check bun exists
@@ -70,10 +74,18 @@ for SERVICE in opencode-backend opencode-web; do
         -e "s|__PROJECT_DIR__|$PROJECT_DIR|g" \
         -e "s|__SERVER_IP__|$SERVER_IP|g" \
         -e "s|__BUN_PATH__|$BUN_PATH|g" \
+        -e "s|__WORKSPACES_DIR__|$WORKSPACES_DIR|g" \
         "$TEMPLATE" > "$TARGET"
 
     echo "  Created: $TARGET"
 done
+
+# Create workspaces directory
+echo ""
+echo "Creating workspaces directory..."
+mkdir -p "$WORKSPACES_DIR"
+chown "$USER_NAME:$USER_NAME" "$WORKSPACES_DIR"
+echo "  Created: $WORKSPACES_DIR"
 
 # Reload systemd
 echo ""

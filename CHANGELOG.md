@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-18 (28)
+
+### Step 1: Auto-create workspace folder on user creation
+
+When admin creates a new user, the server automatically creates a workspace directory at `<WORKSPACES_DIR>/<username>/my-first-project/`. The workspace path is configurable via `OPENCODE_WORKSPACES_DIR` env var (defaults to `~/workspaces`).
+
+- `POST /user/create` — creates workspace folder, returns `workspaceDir` in response
+- `POST /user/login` — now returns `workspaceDir` and `defaultWorkspace` paths
+- `GET /user/me` — now returns `workspaceDir` and `defaultWorkspace` paths
+- Deploy files updated with `OPENCODE_WORKSPACES_DIR` support
+
+---
+
 ## 2026-04-18 (27)
 
 ### Add systemd deployment files

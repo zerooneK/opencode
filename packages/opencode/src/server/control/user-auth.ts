@@ -1,7 +1,27 @@
 import { Hono } from "hono"
 import { validator } from "hono-openapi"
 import z from "zod"
+import fs from "fs/promises"
+import path from "path"
+import os from "os"
 import { UserAuth } from "@/auth/user"
+
+const WORKSPACES_DIR = process.env.OPENCODE_WORKSPACES_DIR || path.join(os.homedir(), "workspaces")
+const DEFAULT_WORKSPACE_NAME = "my-first-project"
+
+async function createUserWorkspace(username: string): Promise<string> {
+  const userDir = path.join(WORKSPACES_DIR, username, DEFAULT_WORKSPACE_NAME)
+  await fs.mkdir(userDir, { recursive: true })
+  return userDir
+}
+
+function getUserWorkspaceDir(username: string): string {
+  return path.join(WORKSPACES_DIR, username)
+}
+
+function getDefaultWorkspace(username: string): string {
+  return path.join(WORKSPACES_DIR, username, DEFAULT_WORKSPACE_NAME)
+}
 
 function requireUser(authHeader: string | undefined) {
   const token = UserAuth.extractToken(authHeader)
@@ -30,7 +50,11 @@ export function UserAuthRoutes(): Hono {
         const { username, password } = c.req.valid("json")
         const result = UserAuth.login(username, password)
         if (!result) return c.json({ error: "Invalid username or password" }, 401)
-        return c.json(result)
+        return c.json({
+          ...result,
+          workspaceDir: getUserWorkspaceDir(username),
+          defaultWorkspace: getDefaultWorkspace(username),
+        })
       },
     )
     .post("/user/logout", (c) => {
@@ -41,7 +65,11 @@ export function UserAuthRoutes(): Hono {
     .get("/user/me", (c) => {
       const user = requireUser(c.req.header("Authorization"))
       if (!user) return c.json({ error: "Unauthorized" }, 401)
-      return c.json(user)
+      return c.json({
+        ...user,
+        workspaceDir: getUserWorkspaceDir(user.username),
+        defaultWorkspace: getDefaultWorkspace(user.username),
+      })
     })
     .get("/user/list", (c) => {
       const admin = requireAdmin(c.req.header("Authorization"))
@@ -58,7 +86,7 @@ export function UserAuthRoutes(): Hono {
           role: z.enum(["admin", "user"]).default("user"),
         }),
       ),
-      (c) => {
+      async (c) => {
         // Allow first user creation without auth (initial setup)
         const isFirstUser = UserAuth.count() === 0
         if (!isFirstUser) {
@@ -68,7 +96,8 @@ export function UserAuthRoutes(): Hono {
         const { username, password, role } = c.req.valid("json")
         const existingRole: UserAuth.Role = isFirstUser ? "admin" : role
         const id = UserAuth.create(username, password, existingRole)
-        return c.json({ id, username, role: existingRole })
+        const workspaceDir = await createUserWorkspace(username)
+        return c.json({ id, username, role: existingRole, workspaceDir })
       },
     )
     .delete("/user/:id", (c) => {
