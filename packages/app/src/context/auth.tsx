@@ -110,7 +110,22 @@ function AuthContext() {
     return res.ok
   }
 
-  return { store, login, logout, listUsers, createUser, deleteUser, changeRole }
+  const listWorkspaces = async (): Promise<Array<{ name: string; path: string }>> => {
+    const res = await authFetch("/user/workspaces")
+    if (!res.ok) return []
+    return res.json() as Promise<Array<{ name: string; path: string }>>
+  }
+
+  const createWorkspace = async (name: string): Promise<{ name: string; path: string } | undefined> => {
+    const res = await authFetch("/user/workspaces", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    })
+    if (!res.ok) return undefined
+    return res.json() as Promise<{ name: string; path: string }>
+  }
+
+  return { store, login, logout, listUsers, createUser, deleteUser, changeRole, listWorkspaces, createWorkspace }
 }
 
 type AuthContextType = ReturnType<typeof AuthContext>

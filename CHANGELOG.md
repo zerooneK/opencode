@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-04-18 (32)
+
+### Step 4: Add workspace management UI and API
+
+Regular users now see "My Workspaces" on the home page with a "New Workspace" button to create additional workspaces. Admin users see the original project list.
+
+**Backend (`packages/opencode/src/server/control/user-auth.ts`):**
+- `GET /user/workspaces` — lists all workspace folders for the current user
+- `POST /user/workspaces` — creates a new workspace folder (name must be letters, numbers, hyphens, underscores)
+
+**Frontend:**
+- `packages/app/src/context/auth.tsx` — added `listWorkspaces()` and `createWorkspace()` functions
+- `packages/app/src/pages/home.tsx` — regular users see their workspace list + create form; admin users see original project list
+
+---
+
 ## 2026-04-18 (31)
 
 ### Step 3: Restrict regular users to their own workspace folder

@@ -141,4 +141,39 @@ export function UserAuthRoutes(): Hono {
         return c.json(true)
       },
     )
+    .get("/user/workspaces", async (c) => {
+      const user = requireUser(c.req.header("Authorization"))
+      if (!user) return c.json({ error: "Unauthorized" }, 401)
+      const userDir = getUserWorkspaceDir(user.username)
+      const entries = await fs.readdir(userDir, { withFileTypes: true }).catch(() => [])
+      const workspaces = entries
+        .filter((e) => e.isDirectory())
+        .map((e) => ({
+          name: e.name,
+          path: path.join(userDir, e.name),
+        }))
+      return c.json(workspaces)
+    })
+    .post(
+      "/user/workspaces",
+      validator(
+        "json",
+        z.object({
+          name: z
+            .string()
+            .min(1)
+            .regex(/^[a-zA-Z0-9_-]+$/, "Workspace name can only contain letters, numbers, hyphens and underscores"),
+        }),
+      ),
+      async (c) => {
+        const user = requireUser(c.req.header("Authorization"))
+        if (!user) return c.json({ error: "Unauthorized" }, 401)
+        const { name } = c.req.valid("json")
+        const workspacePath = path.join(WORKSPACES_DIR, user.username, name)
+        const exists = await fs.stat(workspacePath).catch(() => null)
+        if (exists) return c.json({ error: "Workspace already exists" }, 400)
+        await fs.mkdir(workspacePath, { recursive: true })
+        return c.json({ name, path: workspacePath })
+      },
+    )
 }
