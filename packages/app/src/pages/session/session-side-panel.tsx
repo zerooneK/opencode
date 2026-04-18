@@ -50,10 +50,10 @@ export function SessionSidePanel(props: {
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const isRegularUser = createMemo(() => auth.store.user?.role === "user")
 
-  const reviewOpen = createMemo(() => !isRegularUser() && isDesktop() && view().reviewPanel.opened())
+  const reviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const fileOpen = createMemo(() => isDesktop() && layout.fileTree.opened())
   const open = createMemo(() => reviewOpen() || fileOpen())
-  const reviewTab = createMemo(() => isDesktop())
+  const reviewTab = createMemo(() => !isRegularUser() && isDesktop())
   const panelWidth = createMemo(() => {
     if (!open()) return "0px"
     if (reviewOpen()) return `calc(100% - ${layout.session.width()}px)`

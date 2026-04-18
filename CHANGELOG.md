@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-04-18 (39)
+
+### Fix: regular users can now preview files by clicking
+
+**Problem:** After Topic 2 hid the review panel for regular users, clicking a file in the "All files" tree did nothing visible. The file tab was being created in state, but the tabs container that hosts `FileTabContent` is inside the same side-panel div that gets `inert` + `pointer-events-none` + `aria-hidden` when `reviewOpen()` is false. By forcing `reviewOpen()` to always return false for regular users, we accidentally disabled the entire file-preview area.
+
+**Fix:** Separate "review panel is open" from "review feature is enabled":
+- `packages/app/src/pages/session.tsx` — restore `desktopReviewOpen` to its original form (no role gate).
+- `packages/app/src/pages/session/session-side-panel.tsx` — restore `reviewOpen` to its original form. Instead, make `reviewTab` return false for regular users. This hides the "Review" tab trigger + content inside the tabs list (and via `createSessionTabs`, prevents `activeTab` from ever resolving to `"review"` for regular users), while still allowing the panel to open so file-tab previews render.
+
+Flow for regular users now:
+1. Click file in tree → `openTab(tab)` + `openReviewPanel()`
+2. Panel opens (state allowed, rendering allowed)
+3. `reviewTab()` = false → no Review tab visible
+4. `activeTab` resolves to the file tab
+5. `FileTabContent` renders the file content — users can now preview files
+
+---
+
 ## 2026-04-18 (38)
 
 ### Topic 2: Hide developer UI for regular users
