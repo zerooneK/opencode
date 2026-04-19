@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-18 (43)
+
+### Fix: download button produced 0-byte file for .docx, .xlsx, .pdf and other binary files
+
+**Root cause:** `File.Service.read` on the server (`packages/opencode/src/file/file.ts:531`) is an LLM-oriented reader: it returns empty `content: ""` for any binary file because feeding binary bytes into a model is useless. The frontend's download button was building a `Blob` from that empty in-memory text, so every binary file downloaded as 0 KB. The file on disk was fine the whole time; the transport was broken.
+
+**Fix:**
+- **Backend (`packages/opencode/src/server/instance/file.ts`)** — Added `GET /file/download?path=X`. Reads real bytes with `fs/promises.readFile`, enforces `Instance.containsPath` (so the workspace-access middleware can still gate regular users to their own folder), responds with `Content-Type: application/octet-stream` + `Content-Disposition: attachment; filename*=UTF-8''...` + `Content-Length`.
+- **Frontend (`packages/app/src/pages/session/file-tabs.tsx`)** — Rewrote `downloadFile()` to `fetch` from the new endpoint with the Bearer token + `directory` query param, then download the returned `Blob`. Shows a toast on failure.
+- **i18n** — added `toast.file.downloadFailed.title` in EN + TH.
+
+---
+
 ## 2026-04-18 (42)
 
 ### Feat: render markdown files as formatted text + download button for any file

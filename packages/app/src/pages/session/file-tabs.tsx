@@ -19,6 +19,7 @@ import { selectionFromLines, useFile, type FileSelection, type SelectedLineRange
 import { useComments } from "@/context/comments"
 import { useLanguage } from "@/context/language"
 import { usePrompt } from "@/context/prompt"
+import { useSDK } from "@/context/sdk"
 import { getSessionHandoff } from "@/pages/session/handoff"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { createSessionTabs } from "@/pages/session/helpers"
@@ -179,6 +180,7 @@ export function FileTabContent(props: { tab: string }) {
   const comments = useComments()
   const language = useLanguage()
   const prompt = usePrompt()
+  const sdk = useSDK()
   const fileComponent = useFileComponent()
   const { sessionKey, tabs, view } = useSessionLayout()
   const activeFileTab = createSessionTabs({
@@ -217,18 +219,37 @@ export function FileTabContent(props: { tab: string }) {
   const hasPreviewMode = createMemo(() => isHtmlFile() || isMarkdownFile())
   const [viewMode, setViewMode] = createSignal<"preview" | "code">("preview")
 
-  const downloadFile = () => {
+  const downloadFile = async () => {
     const p = path()
     if (!p) return
-    const blob = new Blob([contents()], { type: "application/octet-stream" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = getFilename(p)
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    // Fetch raw bytes from the server. The in-memory `contents()` is empty
+    // for binary files (.docx, .xlsx, .pdf, .zip, ...), so we must pull the
+    // file from disk via the dedicated /file/download endpoint.
+    const url = new URL(`${sdk.url.replace(/\/$/, "")}/file/download`)
+    url.searchParams.set("path", p)
+    url.searchParams.set("directory", sdk.directory)
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("opencode-user-token") : null
+    try {
+      const res = await fetch(url.toString(), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = blobUrl
+      a.download = getFilename(p)
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      showToast({
+        variant: "error",
+        title: language.t("toast.file.downloadFailed.title"),
+        description: err instanceof Error ? err.message : undefined,
+      })
+    }
   }
   const selectedLines = createMemo<SelectedLineRange | null>(() => {
     const p = path()

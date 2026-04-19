@@ -1,6 +1,8 @@
 import { Hono } from "hono"
 import { describeRoute, validator, resolver } from "hono-openapi"
 import { Effect } from "effect"
+import fs from "fs/promises"
+import path from "path"
 import z from "zod"
 import { AppRuntime } from "../../effect/app-runtime"
 import { File } from "../../file"
@@ -179,6 +181,52 @@ export const FileRoutes = lazy(() =>
           }),
         )
         return c.json(content)
+      },
+    )
+    .get(
+      "/file/download",
+      describeRoute({
+        summary: "Download file as raw bytes",
+        description: "Return the raw bytes of a file with an attachment Content-Disposition header.",
+        operationId: "file.download",
+        responses: {
+          200: {
+            description: "File bytes",
+            content: {
+              "application/octet-stream": {
+                schema: { type: "string", format: "binary" },
+              },
+            },
+          },
+        },
+      }),
+      validator(
+        "query",
+        z.object({
+          path: z.string(),
+        }),
+      ),
+      async (c) => {
+        const filePath = c.req.valid("query").path
+        const full = path.join(Instance.directory, filePath)
+
+        if (!Instance.containsPath(full)) {
+          return c.json({ error: "Access denied: path escapes project directory" }, 403)
+        }
+
+        const bytes = await fs.readFile(full).catch(() => null)
+        if (!bytes) {
+          return c.json({ error: "File not found" }, 404)
+        }
+
+        const name = path.basename(filePath)
+        return new Response(bytes as unknown as BodyInit, {
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+            "Content-Length": String(bytes.byteLength),
+          },
+        })
       },
     )
     .get(
