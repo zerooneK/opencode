@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-04-18 (44)
+
+### Feat: preview .docx files inside the app via pandoc
+
+**Before:** Opening a `.docx` file showed a "binary file cannot be displayed" message. Users had to download to Word just to check content.
+
+**After:** `.docx` files render as HTML inside a sandboxed iframe (same iframe we already use for HTML preview). Conversion runs server-side through pandoc, which the user has installed anyway for creating `.docx`. Images, headings, lists, tables, and inline formatting come through. Complex multi-column layouts and embedded charts may look simpler than in Word.
+
+**Backend (`packages/opencode/src/server/instance/file.ts`):**
+- `GET /file/preview?path=X` — converts `.docx` to HTML5 with `pandoc --embed-resources --standalone`. Runs via `child_process.execFile` (argv array, no shell — command injection safe). 30-second timeout, 50 MB output cap, gated by `Instance.containsPath`. Clear error if pandoc isn't installed (`"pandoc is not installed on the server"`).
+
+**Frontend (`packages/app/src/pages/session/file-tabs.tsx`):**
+- Added `isDocxFile` detection.
+- `createResource` fetches `/file/preview` when the tab path is a `.docx`, passes auth token + `directory` query param.
+- `.docx` always renders in preview mode (no toggle) — showing raw bytes as "code" is useless. Download button still works.
+- Loading spinner while pandoc runs; friendly error message if conversion fails.
+
+`.xlsx` preview is not included — different tool chain (LibreOffice headless or SheetJS). Can be added in a follow-up if needed.
+
+---
+
 ## 2026-04-18 (43)
 
 ### Fix: download button produced 0-byte file for .docx, .xlsx, .pdf and other binary files

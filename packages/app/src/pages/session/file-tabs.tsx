@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, Match, on, onCleanup, Show, Switch } from "solid-js"
+import { createEffect, createMemo, createResource, createSignal, Match, on, onCleanup, Show, Switch } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import { makeEventListener } from "@solid-primitives/event-listener"
@@ -216,8 +216,38 @@ export function FileTabContent(props: { tab: string }) {
     if (!p) return false
     return /\.(md|markdown|mdown)$/i.test(p)
   })
-  const hasPreviewMode = createMemo(() => isHtmlFile() || isMarkdownFile())
+  const isDocxFile = createMemo(() => {
+    const p = path()
+    if (!p) return false
+    return /\.docx$/i.test(p)
+  })
+  // HTML and Markdown have both a pretty preview and a raw source view, so they
+  // get the Preview/Code toggle. DOCX only has a preview (converted via pandoc
+  // on the server) — showing raw bytes would be useless, so we just always
+  // render the preview and hide the toggle.
+  const hasViewToggle = createMemo(() => isHtmlFile() || isMarkdownFile())
   const [viewMode, setViewMode] = createSignal<"preview" | "code">("preview")
+  const showPreview = createMemo(() => isDocxFile() || (hasViewToggle() && viewMode() === "preview"))
+
+  // Fetch pandoc-converted HTML for .docx files. Only runs when the user is
+  // looking at a .docx tab.
+  const [docxPreview] = createResource(
+    () => (isDocxFile() && state()?.loaded ? path() : undefined),
+    async (p) => {
+      const url = new URL(`${sdk.url.replace(/\/$/, "")}/file/preview`)
+      url.searchParams.set("path", p)
+      url.searchParams.set("directory", sdk.directory)
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem("opencode-user-token") : null
+      const res = await fetch(url.toString(), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(body?.error ?? `HTTP ${res.status}`)
+      }
+      return res.text()
+    },
+  )
 
   const downloadFile = async () => {
     const p = path()
@@ -508,13 +538,30 @@ export function FileTabContent(props: { tab: string }) {
     </div>
   )
 
-  const showingPreview = createMemo(() => hasPreviewMode() && viewMode() === "preview" && state()?.loaded)
+  const renderDocxPreview = () => (
+    <Switch>
+      <Match when={docxPreview.loading}>
+        <div class="flex items-center justify-center h-full text-text-weak">
+          {language.t("common.loading")}
+          {language.t("common.loading.ellipsis")}
+        </div>
+      </Match>
+      <Match when={docxPreview.error}>
+        {(err) => (
+          <div class="px-6 py-4 text-text-weak">
+            {err() instanceof Error ? (err() as Error).message : String(err())}
+          </div>
+        )}
+      </Match>
+      <Match when={docxPreview()}>{(html) => renderHtmlPreview(html())}</Match>
+    </Switch>
+  )
 
   return (
     <Tabs.Content value={props.tab} class="mt-3 relative h-full">
       <Show when={state()?.loaded}>
         <div class="sticky top-0 z-10 flex items-center justify-end gap-1 px-2 py-1 bg-background-base border-b border-border-weak-base">
-          <Show when={hasPreviewMode()}>
+          <Show when={hasViewToggle()}>
             <Button
               size="small"
               variant={viewMode() === "preview" ? "secondary" : "ghost"}
@@ -536,7 +583,7 @@ export function FileTabContent(props: { tab: string }) {
         </div>
       </Show>
       <Show
-        when={showingPreview()}
+        when={showPreview() && state()?.loaded}
         fallback={
           <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll as any}>
             <Switch>
@@ -549,9 +596,11 @@ export function FileTabContent(props: { tab: string }) {
           </ScrollView>
         }
       >
-        <Show when={isHtmlFile()} fallback={renderMarkdownPreview(contents())}>
-          {renderHtmlPreview(contents())}
-        </Show>
+        <Switch>
+          <Match when={isDocxFile()}>{renderDocxPreview()}</Match>
+          <Match when={isHtmlFile()}>{renderHtmlPreview(contents())}</Match>
+          <Match when={isMarkdownFile()}>{renderMarkdownPreview(contents())}</Match>
+        </Switch>
       </Show>
     </Tabs.Content>
   )

@@ -1,9 +1,13 @@
 import { Hono } from "hono"
 import { describeRoute, validator, resolver } from "hono-openapi"
 import { Effect } from "effect"
+import { execFile } from "child_process"
 import fs from "fs/promises"
 import path from "path"
+import { promisify } from "util"
 import z from "zod"
+
+const execFileP = promisify(execFile)
 import { AppRuntime } from "../../effect/app-runtime"
 import { File } from "../../file"
 import { Ripgrep } from "../../file/ripgrep"
@@ -227,6 +231,67 @@ export const FileRoutes = lazy(() =>
             "Content-Length": String(bytes.byteLength),
           },
         })
+      },
+    )
+    .get(
+      "/file/preview",
+      describeRoute({
+        summary: "Convert an office document to HTML for preview",
+        description: "Use pandoc to convert .docx files to HTML. Returns HTML string with embedded images.",
+        operationId: "file.preview",
+        responses: {
+          200: {
+            description: "HTML preview",
+            content: {
+              "text/html": {
+                schema: { type: "string" },
+              },
+            },
+          },
+        },
+      }),
+      validator(
+        "query",
+        z.object({
+          path: z.string(),
+        }),
+      ),
+      async (c) => {
+        const filePath = c.req.valid("query").path
+        const full = path.join(Instance.directory, filePath)
+
+        if (!Instance.containsPath(full)) {
+          return c.json({ error: "Access denied: path escapes project directory" }, 403)
+        }
+
+        const stat = await fs.stat(full).catch(() => null)
+        if (!stat || !stat.isFile()) {
+          return c.json({ error: "File not found" }, 404)
+        }
+
+        const ext = path.extname(full).toLowerCase()
+        if (ext !== ".docx") {
+          return c.json({ error: "Unsupported file type — preview is only available for .docx" }, 400)
+        }
+
+        try {
+          const { stdout } = await execFileP(
+            "pandoc",
+            [full, "--from=docx", "--to=html5", "--embed-resources", "--standalone"],
+            { maxBuffer: 50 * 1024 * 1024, timeout: 30_000 },
+          )
+          return new Response(stdout, {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          })
+        } catch (err) {
+          const message =
+            err instanceof Error
+              ? err.message.includes("ENOENT")
+                ? "pandoc is not installed on the server"
+                : err.message
+              : "Preview failed"
+          return c.json({ error: message }, 500)
+        }
       },
     )
     .get(
