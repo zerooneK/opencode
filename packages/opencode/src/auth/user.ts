@@ -31,6 +31,7 @@ export namespace UserAuth {
   }
 
   export function create(username: string, password: string, role: Role = "user"): string {
+    if (findByUsername(username)) throw new UsernameTakenError(username)
     const id = crypto.randomUUID()
     Database.transaction((db) => {
       db.insert(UserTable)
@@ -102,6 +103,35 @@ export namespace UserAuth {
     Database.transaction((db) => {
       db.update(UserTable).set({ role }).where(eq(UserTable.id, id)).run()
     })
+  }
+
+  // Admin-initiated: overwrite a user's password without knowing the old one.
+  // Also invalidates all of that user's sessions so they must sign in again.
+  export function resetPassword(id: string, newPassword: string): void {
+    Database.transaction((db) => {
+      db.update(UserTable).set({ password: hashPassword(newPassword) }).where(eq(UserTable.id, id)).run()
+      db.delete(UserSessionTable).where(eq(UserSessionTable.user_id, id)).run()
+    })
+  }
+
+  // User-initiated: change own password after verifying the current one.
+  // Returns false if the current password is wrong.
+  export function changeOwnPassword(id: string, currentPassword: string, newPassword: string): boolean {
+    const row = findById(id)
+    if (!row) return false
+    if (!verifyPassword(currentPassword, row.password)) return false
+    Database.transaction((db) => {
+      db.update(UserTable).set({ password: hashPassword(newPassword) }).where(eq(UserTable.id, id)).run()
+    })
+    return true
+  }
+
+  // Thrown by `create` when the username already exists.
+  export class UsernameTakenError extends Error {
+    constructor(username: string) {
+      super(`Username "${username}" is already taken`)
+      this.name = "UsernameTakenError"
+    }
   }
 
   export function extractToken(authHeader: string | undefined): string | undefined {

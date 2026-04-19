@@ -113,12 +113,19 @@ function AuthContext() {
     return res.json() as Promise<User[]>
   }
 
-  const createUser = async (username: string, password: string, role: "admin" | "user") => {
+  // Returns undefined on success, or a user-facing error message on failure.
+  const createUser = async (
+    username: string,
+    password: string,
+    role: "admin" | "user",
+  ): Promise<string | undefined> => {
     const res = await authFetch("/user/create", {
       method: "POST",
       body: JSON.stringify({ username, password, role }),
     })
-    return res.ok
+    if (res.ok) return undefined
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    return body?.error ?? `Failed to create user (HTTP ${res.status})`
   }
 
   const deleteUser = async (id: string) => {
@@ -132,6 +139,32 @@ function AuthContext() {
       body: JSON.stringify({ role }),
     })
     return res.ok
+  }
+
+  // Admin sets a new password for a user. The user's existing sessions are
+  // invalidated server-side so they must sign in again.
+  const resetUserPassword = async (id: string, newPassword: string): Promise<string | undefined> => {
+    const res = await authFetch(`/user/${id}/password`, {
+      method: "PUT",
+      body: JSON.stringify({ password: newPassword }),
+    })
+    if (res.ok) return undefined
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    return body?.error ?? `Failed to reset password (HTTP ${res.status})`
+  }
+
+  // Current user changes their own password. Server verifies the current one.
+  const changeOwnPassword = async (
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<string | undefined> => {
+    const res = await authFetch("/user/me/password", {
+      method: "PUT",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    if (res.ok) return undefined
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    return body?.error ?? `Failed to change password (HTTP ${res.status})`
   }
 
   const listWorkspaces = async (): Promise<Array<{ name: string; path: string }>> => {
@@ -149,7 +182,19 @@ function AuthContext() {
     return res.json() as Promise<{ name: string; path: string }>
   }
 
-  return { store, login, logout, listUsers, createUser, deleteUser, changeRole, listWorkspaces, createWorkspace }
+  return {
+    store,
+    login,
+    logout,
+    listUsers,
+    createUser,
+    deleteUser,
+    changeRole,
+    resetUserPassword,
+    changeOwnPassword,
+    listWorkspaces,
+    createWorkspace,
+  }
 }
 
 type AuthContextType = ReturnType<typeof AuthContext>

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-04-18 (46)
+
+### Topic 4 (1/3): Admin panel — safety & password management
+
+Admin can now manage passwords without deleting + recreating accounts, and destructive actions require confirmation.
+
+**New features:**
+- **Reset user password** — admin sets a new password for any user; that user's existing sessions are invalidated so they must sign in again with the new password.
+- **Change own password** — admin can rotate their own password via a modal that verifies the current one first.
+- **Confirm dialog on Remove** — clicking Remove no longer deletes instantly; a modal explains that the account will be deleted and the workspace renamed to `<username>_deleted_YYYY-MM-DD` before requiring explicit confirmation.
+- **Duplicate-username error** — creating a user with an existing username now shows "Username '…' is already taken" instead of a generic failure.
+
+**Backend:**
+- `packages/opencode/src/auth/user.ts` — added `resetPassword(id, newPassword)` (invalidates sessions), `changeOwnPassword(id, currentPassword, newPassword)` (returns false on wrong current password), and `UsernameTakenError`.
+- `packages/opencode/src/server/control/user-auth.ts` — routes `PUT /user/:id/password` and `PUT /user/me/password`; `POST /user/create` now returns `409` with a JSON error on duplicate username.
+
+**Frontend:**
+- `packages/app/src/context/auth.tsx` — `createUser` now returns `string | undefined` (error message or success); added `resetUserPassword(id, newPassword)` and `changeOwnPassword(current, new)`.
+- `packages/app/src/pages/admin.tsx` — added "My account" card at the top with Change-password action; per-user rows now show Reset-password + Remove buttons that open a confirmation/input modal instead of acting immediately; server errors surface in the dialog.
+
+---
+
 ## 2026-04-18 (45)
 
 ### Fix: .docx preview broken on pandoc < 2.19 ("Unknown option --embed-resources")

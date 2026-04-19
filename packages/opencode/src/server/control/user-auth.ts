@@ -113,9 +113,16 @@ export function UserAuthRoutes(): Hono {
         }
         const { username, password, role } = c.req.valid("json")
         const existingRole: UserAuth.Role = isFirstUser ? "admin" : role
-        const id = UserAuth.create(username, password, existingRole)
-        const workspaceDir = await createUserWorkspace(username)
-        return c.json({ id, username, role: existingRole, workspaceDir })
+        try {
+          const id = UserAuth.create(username, password, existingRole)
+          const workspaceDir = await createUserWorkspace(username)
+          return c.json({ id, username, role: existingRole, workspaceDir })
+        } catch (err) {
+          if (err instanceof UserAuth.UsernameTakenError) {
+            return c.json({ error: err.message }, 409)
+          }
+          throw err
+        }
       },
     )
     .delete("/user/:id", async (c) => {
@@ -140,6 +147,41 @@ export function UserAuthRoutes(): Hono {
         if (!admin) return c.json({ error: "Forbidden" }, 403)
         if (c.req.param("id") === admin.id) return c.json({ error: "Cannot change your own role" }, 400)
         UserAuth.changeRole(c.req.param("id"), c.req.valid("json").role)
+        return c.json(true)
+      },
+    )
+    .put(
+      "/user/:id/password",
+      validator(
+        "json",
+        z.object({
+          password: z.string().min(6),
+        }),
+      ),
+      (c) => {
+        const admin = requireAdmin(c.req.header("Authorization"))
+        if (!admin) return c.json({ error: "Forbidden" }, 403)
+        const target = UserAuth.findById(c.req.param("id"))
+        if (!target) return c.json({ error: "User not found" }, 404)
+        UserAuth.resetPassword(target.id, c.req.valid("json").password)
+        return c.json(true)
+      },
+    )
+    .put(
+      "/user/me/password",
+      validator(
+        "json",
+        z.object({
+          currentPassword: z.string().min(1),
+          newPassword: z.string().min(6),
+        }),
+      ),
+      (c) => {
+        const user = requireUser(c.req.header("Authorization"))
+        if (!user) return c.json({ error: "Unauthorized" }, 401)
+        const { currentPassword, newPassword } = c.req.valid("json")
+        const ok = UserAuth.changeOwnPassword(user.id, currentPassword, newPassword)
+        if (!ok) return c.json({ error: "Current password is incorrect" }, 400)
         return c.json(true)
       },
     )
