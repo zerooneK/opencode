@@ -274,13 +274,26 @@ export const FileRoutes = lazy(() =>
           return c.json({ error: "Unsupported file type — preview is only available for .docx" }, 400)
         }
 
+        // pandoc 2.19+ uses `--embed-resources --standalone`. Older versions
+        // (e.g. pandoc 2.9 shipped with Ubuntu 22.04) only understand the
+        // older `--self-contained` flag. Try the modern flags first; on
+        // "Unknown option" fall back to `--self-contained`.
+        const runPandoc = async (args: string[]) =>
+          execFileP("pandoc", args, { maxBuffer: 50 * 1024 * 1024, timeout: 30_000 })
+
         try {
-          const { stdout } = await execFileP(
-            "pandoc",
-            [full, "--from=docx", "--to=html5", "--embed-resources", "--standalone"],
-            { maxBuffer: 50 * 1024 * 1024, timeout: 30_000 },
-          )
-          return new Response(stdout, {
+          let result: Awaited<ReturnType<typeof runPandoc>>
+          try {
+            result = await runPandoc([full, "--from=docx", "--to=html5", "--embed-resources", "--standalone"])
+          } catch (err) {
+            const message = err instanceof Error ? err.message : ""
+            if (message.includes("Unknown option")) {
+              result = await runPandoc([full, "--from=docx", "--to=html5", "--self-contained"])
+            } else {
+              throw err
+            }
+          }
+          return new Response(result.stdout, {
             headers: { "Content-Type": "text/html; charset=utf-8" },
           })
         } catch (err) {

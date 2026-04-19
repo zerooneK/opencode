@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-18 (45)
+
+### Fix: .docx preview broken on pandoc < 2.19 ("Unknown option --embed-resources")
+
+**Problem:** The `.docx` preview route used `--embed-resources --standalone`, which was only added in pandoc 2.19 (2022). Pandoc 2.9 (the default on Ubuntu 22.04 and many other distros) rejected the flag and the preview tab showed the raw pandoc error.
+
+**Fix (`packages/opencode/src/server/instance/file.ts`):** Try the modern `--embed-resources --standalone` first. If pandoc responds with "Unknown option", retry automatically with the older `--self-contained` flag (equivalent behavior, supported from pandoc 2.0 through 3.x). No server config needed.
+
+---
+
 ## 2026-04-18 (44)
 
 ### Feat: preview .docx files inside the app via pandoc
