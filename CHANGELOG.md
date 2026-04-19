@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-18 (48)
+
+### Topic 4 (3/3): Admin panel — polish
+
+Small UX improvements to make the admin panel feel finished.
+
+- **Sticky top bar** with "← Back to chat" on the left and "User Management" label in the center. Much easier to escape the admin page than the old footer link.
+- **Splash loading state** for the user list (pulsing logo instead of plain "Loading users..." text).
+- **Escape key closes dialogs** — press Esc to dismiss the delete / reset-password / change-password modals.
+- Removed the old footer back-link (redundant with the top bar).
+
+`packages/app/src/pages/admin.tsx` only.
+
+---
+
 ## 2026-04-18 (47)
 
 ### Topic 4 (2/3): Admin panel — visibility

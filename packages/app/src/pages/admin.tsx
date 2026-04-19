@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js"
+import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { useNavigate } from "@solidjs/router"
 import { Splash } from "@opencode-ai/ui/logo"
 import { useAuth } from "@/context/auth"
@@ -84,6 +84,18 @@ export default function AdminPage() {
     setDialog({ kind: "none" })
   }
 
+  // Close any open dialog with the Escape key.
+  onMount(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      if (dialog().kind === "none") return
+      e.preventDefault()
+      closeDialog()
+    }
+    window.addEventListener("keydown", onKey)
+    onCleanup(() => window.removeEventListener("keydown", onKey))
+  })
+
   const handleCreate = async (e: Event) => {
     e.preventDefault()
     setCreateError(undefined)
@@ -158,7 +170,22 @@ export default function AdminPage() {
 
   return (
     <div class="h-dvh w-screen bg-background-base overflow-y-auto">
-      <div class="mx-auto max-w-2xl px-6 py-12">
+      {/* Top bar */}
+      <div class="sticky top-0 z-20 border-b border-border-base bg-background-base/95 backdrop-blur">
+        <div class="mx-auto max-w-2xl px-6 h-12 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/")}
+            class="flex items-center gap-1.5 text-13-regular text-text-weak transition-colors hover:text-text-strong"
+          >
+            <span aria-hidden>&larr;</span>
+            <span>Back to chat</span>
+          </button>
+          <p class="text-13-medium text-text-strong">User Management</p>
+          <div class="w-24" aria-hidden />
+        </div>
+      </div>
+
+      <div class="mx-auto max-w-2xl px-6 py-8">
         {/* Header */}
         <div class="mb-8 flex flex-col items-center gap-3">
           <Splash class="w-10 h-12" />
@@ -232,8 +259,9 @@ export default function AdminPage() {
           <Show
             when={users()}
             fallback={
-              <div class="px-5 py-8 flex items-center justify-center">
-                <p class="text-13-regular text-text-weak">Loading users...</p>
+              <div class="px-5 py-10 flex flex-col items-center justify-center gap-3">
+                <Splash class="w-8 h-10 opacity-40 animate-pulse" />
+                <p class="text-12-regular text-text-weak">Loading users...</p>
               </div>
             }
           >
@@ -392,15 +420,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Back link */}
-        <div class="mt-6 flex justify-center">
-          <button
-            onClick={() => navigate("/")}
-            class="text-13-regular text-text-weak transition-colors hover:text-text-base"
-          >
-            &larr; Back to app
-          </button>
-        </div>
       </div>
 
       {/* Modal overlay */}
