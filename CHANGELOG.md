@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-04-18 (42)
+
+### Feat: render markdown files as formatted text + download button for any file
+
+**Markdown preview:**
+Opening a `.md` / `.markdown` / `.mdown` file now renders it as formatted text (headings, bold, lists, code blocks with syntax highlighting) by default. Same Preview / Code toggle pattern as HTML.
+
+Reused the existing `<Markdown>` component from `@opencode-ai/ui/markdown` (same renderer that shows AI chat messages — `marked` + `marked-shiki` + `DOMPurify`). No new library added.
+
+**Download button:**
+Added a "Download" / "ดาวน์โหลด" button to the file-tab toolbar. Works for every file type (HTML, MD, TXT, images, etc.) and saves the file with its original filename/extension.
+
+Implementation: Blob → `URL.createObjectURL` → temporary `<a download>` click → revoke URL. No server round-trip — uses the content already in memory.
+
+**Files:**
+- `packages/app/src/pages/session/file-tabs.tsx` — add `isMarkdownFile`, unify `viewMode` signal across HTML + MD, add `downloadFile()`, render toolbar with Preview / Code / Download.
+- `packages/app/src/i18n/en.ts` + `th.ts` — rename `session.file.htmlView.*` → `session.file.view.*` (shared by HTML + MD) and add `session.file.download`.
+
+---
+
 ## 2026-04-18 (41)
 
 ### Fix: regular user still sees admin's workspaces after admin logs out

@@ -7,9 +7,11 @@ import { useFileComponent } from "@opencode-ai/ui/context/file"
 import { cloneSelectedLineRange, previewSelectedLines } from "@opencode-ai/ui/pierre/selection-bridge"
 import { createLineCommentController } from "@opencode-ai/ui/line-comment-annotations"
 import { sampledChecksum } from "@opencode-ai/shared/util/encode"
+import { getFilename } from "@opencode-ai/shared/util/path"
 import { Button } from "@opencode-ai/ui/button"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { IconButton } from "@opencode-ai/ui/icon-button"
+import { Markdown } from "@opencode-ai/ui/markdown"
 import { Tabs } from "@opencode-ai/ui/tabs"
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
 import { showToast } from "@opencode-ai/ui/toast"
@@ -207,7 +209,27 @@ export function FileTabContent(props: { tab: string }) {
     if (!p) return false
     return /\.html?$/i.test(p)
   })
-  const [htmlViewMode, setHtmlViewMode] = createSignal<"preview" | "code">("preview")
+  const isMarkdownFile = createMemo(() => {
+    const p = path()
+    if (!p) return false
+    return /\.(md|markdown|mdown)$/i.test(p)
+  })
+  const hasPreviewMode = createMemo(() => isHtmlFile() || isMarkdownFile())
+  const [viewMode, setViewMode] = createSignal<"preview" | "code">("preview")
+
+  const downloadFile = () => {
+    const p = path()
+    if (!p) return
+    const blob = new Blob([contents()], { type: "application/octet-stream" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = getFilename(p)
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
   const selectedLines = createMemo<SelectedLineRange | null>(() => {
     const p = path()
     if (!p) return null
@@ -459,28 +481,41 @@ export function FileTabContent(props: { tab: string }) {
     </div>
   )
 
+  const renderMarkdownPreview = (source: string) => (
+    <div class="relative overflow-auto h-full px-6 py-4">
+      <Markdown text={source} class="text-14-regular" />
+    </div>
+  )
+
+  const showingPreview = createMemo(() => hasPreviewMode() && viewMode() === "preview" && state()?.loaded)
+
   return (
     <Tabs.Content value={props.tab} class="mt-3 relative h-full">
-      <Show when={isHtmlFile() && state()?.loaded}>
+      <Show when={state()?.loaded}>
         <div class="sticky top-0 z-10 flex items-center justify-end gap-1 px-2 py-1 bg-background-base border-b border-border-weak-base">
-          <Button
-            size="small"
-            variant={htmlViewMode() === "preview" ? "secondary" : "ghost"}
-            onClick={() => setHtmlViewMode("preview")}
-          >
-            {language.t("session.file.htmlView.preview")}
-          </Button>
-          <Button
-            size="small"
-            variant={htmlViewMode() === "code" ? "secondary" : "ghost"}
-            onClick={() => setHtmlViewMode("code")}
-          >
-            {language.t("session.file.htmlView.code")}
+          <Show when={hasPreviewMode()}>
+            <Button
+              size="small"
+              variant={viewMode() === "preview" ? "secondary" : "ghost"}
+              onClick={() => setViewMode("preview")}
+            >
+              {language.t("session.file.view.preview")}
+            </Button>
+            <Button
+              size="small"
+              variant={viewMode() === "code" ? "secondary" : "ghost"}
+              onClick={() => setViewMode("code")}
+            >
+              {language.t("session.file.view.code")}
+            </Button>
+          </Show>
+          <Button size="small" variant="ghost" onClick={downloadFile}>
+            {language.t("session.file.download")}
           </Button>
         </div>
       </Show>
       <Show
-        when={isHtmlFile() && htmlViewMode() === "preview" && state()?.loaded}
+        when={showingPreview()}
         fallback={
           <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll as any}>
             <Switch>
@@ -493,7 +528,9 @@ export function FileTabContent(props: { tab: string }) {
           </ScrollView>
         }
       >
-        {renderHtmlPreview(contents())}
+        <Show when={isHtmlFile()} fallback={renderMarkdownPreview(contents())}>
+          {renderHtmlPreview(contents())}
+        </Show>
       </Show>
     </Tabs.Content>
   )
