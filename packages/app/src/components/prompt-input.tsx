@@ -2,6 +2,7 @@ import { useFilteredList } from "@opencode-ai/ui/hooks"
 import { useSpring } from "@opencode-ai/ui/motion-spring"
 import { createEffect, on, Component, Show, onCleanup, createMemo, createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
+import { useAuth } from "@/context/auth"
 import { useLocal } from "@/context/local"
 import { selectionFromLines, type SelectedLineRange, useFile } from "@/context/file"
 import {
@@ -115,6 +116,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const permission = usePermission()
   const language = useLanguage()
   const platform = usePlatform()
+  const auth = useAuth()
+  const isRegularUser = createMemo(() => auth.store.user?.role === "user")
   const { params, tabs, view } = useSessionLayout()
   let editorRef!: HTMLDivElement
   let fileInputRef: HTMLInputElement | undefined
@@ -1456,7 +1459,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 <div class="size-4 shrink-0" />
               </div>
               <div class="flex items-center gap-1.5 min-w-0 flex-1 h-7">
-                <Show when={!providersLoading()}>
+                <Show when={!providersLoading() && !isRegularUser()}>
                   <Show when={store.mode !== "shell"}>
                     <div data-component="prompt-model-control">
                       <Show

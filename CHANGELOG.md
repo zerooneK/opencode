@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-04-18 (49)
+
+### Feat: cost control — hide AI model picker from regular users
+
+**Problem:** Regular users saw the full model dropdown at the bottom of chat and could pick any model including expensive ones (Claude Opus, GPT-4). No budget cap, no admin oversight. A team of 20 users picking premium models could cost $500–1000/month in API fees instead of $50–100 with reasonable defaults.
+
+**Fix:** In `packages/app/src/components/prompt-input.tsx`, wrap the model picker and variant picker with `<Show when={!isRegularUser()}>`. Admin still sees the full picker and can choose any model. Regular users see nothing — they use whatever the provider fallback picks (cheapest/first-configured model). Admins can set a preferred default via the OpenCode config.
+
+Flow for regular users:
+1. Login → agent list loads
+2. `local.agent.current()` returns first agent automatically
+3. `local.model.current()` returns fallback model (first model of first connected provider, or configured default)
+4. Submit works normally — user never sees the choice
+
+This is UI-level cost control. A power user could still hit the backend API directly with any model, but for a trusted internal team this is sufficient.
+
+**Phase 2** (future): per-user budget caps, admin-configured model whitelist, usage dashboard.
+
+---
+
 ## 2026-04-18 (48)
 
 ### Topic 4 (3/3): Admin panel — polish
