@@ -1,5 +1,5 @@
 import { randomBytes, pbkdf2Sync } from "crypto"
-import { Database, eq } from "../storage"
+import { Database, eq, sql } from "../storage"
 import { UserTable, UserSessionTable } from "./user.sql"
 
 // 30 days in milliseconds
@@ -91,6 +91,38 @@ export namespace UserAuth {
         .from(UserTable)
         .all(),
     )
+  }
+
+  export type UserWithMeta = User & {
+    created_at: number
+    last_login: number | null
+  }
+
+  // Like `listUsers` but also returns creation time and last-login time.
+  // last_login is the most recent session.time_created for that user (null if
+  // the user has never signed in — happens when admin just created them).
+  export function listUsersWithMeta(): UserWithMeta[] {
+    return Database.use((db) => {
+      const users = db
+        .select({
+          id: UserTable.id,
+          username: UserTable.username,
+          role: UserTable.role,
+          created_at: UserTable.time_created,
+        })
+        .from(UserTable)
+        .all()
+      const sessions = db
+        .select({
+          user_id: UserSessionTable.user_id,
+          last_login: sql<number>`MAX(${UserSessionTable.time_created})`.mapWith(Number),
+        })
+        .from(UserSessionTable)
+        .groupBy(UserSessionTable.user_id)
+        .all()
+      const byUser = new Map(sessions.map((s) => [s.user_id, s.last_login]))
+      return users.map((u) => ({ ...u, last_login: byUser.get(u.id) ?? null }))
+    })
   }
 
   export function deleteUser(id: string): void {

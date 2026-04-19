@@ -89,10 +89,19 @@ export function UserAuthRoutes(): Hono {
         defaultWorkspace: getDefaultWorkspace(user.username),
       })
     })
-    .get("/user/list", (c) => {
+    .get("/user/list", async (c) => {
       const admin = requireAdmin(c.req.header("Authorization"))
       if (!admin) return c.json({ error: "Forbidden" }, 403)
-      return c.json(UserAuth.listUsers())
+      const users = UserAuth.listUsersWithMeta()
+      const withCounts = await Promise.all(
+        users.map(async (user) => {
+          const userDir = path.join(WORKSPACES_DIR, user.username)
+          const entries = await fs.readdir(userDir, { withFileTypes: true }).catch(() => [])
+          const workspaceCount = entries.filter((e) => e.isDirectory()).length
+          return { ...user, workspaceCount }
+        }),
+      )
+      return c.json(withCounts)
     })
     .post(
       "/user/create",

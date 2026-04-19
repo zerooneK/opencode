@@ -1,7 +1,25 @@
-import { createEffect, createResource, createSignal, For, Show } from "solid-js"
+import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js"
 import { useNavigate } from "@solidjs/router"
 import { Splash } from "@opencode-ai/ui/logo"
 import { useAuth } from "@/context/auth"
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function formatRelative(ts: number | null): string {
+  if (!ts) return "Never"
+  const diff = Date.now() - ts
+  if (diff < 60_000) return "Just now"
+  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < DAY_MS) return `${Math.floor(diff / (60 * 60_000))}h ago`
+  if (diff < 30 * DAY_MS) return `${Math.floor(diff / DAY_MS)}d ago`
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+function formatDate(ts: number): string {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
 
 type DialogState =
   | { kind: "none" }
@@ -23,6 +41,22 @@ export default function AdminPage() {
   })
 
   const [users, { refetch }] = createResource(() => auth.listUsers())
+  const [search, setSearch] = createSignal("")
+
+  const filteredUsers = createMemo(() => {
+    const list = users() ?? []
+    const q = search().trim().toLowerCase()
+    if (!q) return list
+    return list.filter((u) => u.username.toLowerCase().includes(q))
+  })
+
+  const stats = createMemo(() => {
+    const list = users() ?? []
+    const activeToday = list.filter((u) => u.last_login && Date.now() - u.last_login < DAY_MS).length
+    const totalWorkspaces = list.reduce((sum, u) => sum + u.workspaceCount, 0)
+    return { total: list.length, activeToday, totalWorkspaces }
+  })
+
   const [newUsername, setNewUsername] = createSignal("")
   const [newPassword, setNewPassword] = createSignal("")
   const [newRole, setNewRole] = createSignal<"admin" | "user">("user")
@@ -124,7 +158,7 @@ export default function AdminPage() {
 
   return (
     <div class="h-dvh w-screen bg-background-base overflow-y-auto">
-      <div class="mx-auto max-w-lg px-6 py-12">
+      <div class="mx-auto max-w-2xl px-6 py-12">
         {/* Header */}
         <div class="mb-8 flex flex-col items-center gap-3">
           <Splash class="w-10 h-12" />
@@ -162,14 +196,36 @@ export default function AdminPage() {
           )}
         </Show>
 
+        {/* Stats bar */}
+        <Show when={users()}>
+          <div class="w-full grid grid-cols-3 gap-3 mb-6">
+            <div class="rounded-xl border border-border-base bg-surface-base px-4 py-3">
+              <p class="text-11-regular text-text-weak">Users</p>
+              <p class="text-16-medium text-text-strong mt-0.5">{stats().total}</p>
+            </div>
+            <div class="rounded-xl border border-border-base bg-surface-base px-4 py-3">
+              <p class="text-11-regular text-text-weak">Active today</p>
+              <p class="text-16-medium text-text-strong mt-0.5">{stats().activeToday}</p>
+            </div>
+            <div class="rounded-xl border border-border-base bg-surface-base px-4 py-3">
+              <p class="text-11-regular text-text-weak">Workspaces</p>
+              <p class="text-16-medium text-text-strong mt-0.5">{stats().totalWorkspaces}</p>
+            </div>
+          </div>
+        </Show>
+
         {/* User list card */}
         <div class="w-full rounded-xl border border-border-base bg-surface-base shadow-sm mb-6">
           <div class="px-5 py-3.5 border-b border-border-base">
-            <div class="flex items-center justify-between">
-              <p class="text-13-medium text-text-strong">Users</p>
-              <Show when={users()}>
-                <span class="text-12-regular text-text-weak">{users()!.length} total</span>
-              </Show>
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-13-medium text-text-strong shrink-0">Users</p>
+              <input
+                type="search"
+                placeholder="Search username..."
+                value={search()}
+                onInput={(e) => setSearch(e.currentTarget.value)}
+                class="h-7 max-w-48 rounded-lg border border-border-base bg-background-base px-2.5 text-12-regular text-text-strong placeholder:text-text-weak outline-none transition-colors focus:border-accent-base"
+              />
             </div>
           </div>
 
@@ -181,67 +237,82 @@ export default function AdminPage() {
               </div>
             }
           >
-            <div class="divide-y divide-border-base">
-              <For each={users()}>
-                {(user) => (
-                  <div class="flex items-center justify-between px-5 py-3 transition-colors hover:bg-surface-raised-base-hover">
-                    <div class="flex items-center gap-3 min-w-0">
-                      <div
-                        class="flex size-8 shrink-0 items-center justify-center rounded-full text-12-medium text-white uppercase"
-                        classList={{
-                          "bg-accent-base": user.role === "admin",
-                          "bg-neutral-500": user.role !== "admin",
-                        }}
-                      >
-                        {user.username.charAt(0)}
+            <Show
+              when={filteredUsers().length > 0}
+              fallback={
+                <div class="px-5 py-8 flex items-center justify-center">
+                  <p class="text-13-regular text-text-weak">No users match "{search()}"</p>
+                </div>
+              }
+            >
+              <div class="divide-y divide-border-base">
+                <For each={filteredUsers()}>
+                  {(user) => (
+                    <div class="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-surface-raised-base-hover">
+                      <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <div
+                          class="flex size-8 shrink-0 items-center justify-center rounded-full text-12-medium text-white uppercase"
+                          classList={{
+                            "bg-accent-base": user.role === "admin",
+                            "bg-neutral-500": user.role !== "admin",
+                          }}
+                        >
+                          {user.username.charAt(0)}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <p class="text-13-medium text-text-strong truncate">{user.username}</p>
+                          <p class="text-11-regular text-text-weak">
+                            {user.role === "admin" ? "Administrator" : "User"}
+                            <span class="mx-1.5">·</span>
+                            {user.workspaceCount} {user.workspaceCount === 1 ? "workspace" : "workspaces"}
+                            <span class="mx-1.5">·</span>
+                            Last active {formatRelative(user.last_login)}
+                            <span class="mx-1.5">·</span>
+                            Joined {formatDate(user.created_at)}
+                          </p>
+                        </div>
                       </div>
-                      <div class="min-w-0">
-                        <p class="text-13-medium text-text-strong truncate">{user.username}</p>
-                        <p class="text-11-regular text-text-weak">
-                          {user.role === "admin" ? "Administrator" : "User"}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div class="flex items-center gap-2 shrink-0">
-                      <Show
-                        when={user.id !== auth.store.user?.id}
-                        fallback={
-                          <span class="rounded-full bg-accent-base/10 px-2.5 py-0.5 text-11-medium text-accent-base">
-                            You
-                          </span>
-                        }
-                      >
-                        <select
-                          value={user.role}
-                          onChange={(e) => handleRoleChange(user.id, e.currentTarget.value as "admin" | "user")}
-                          class="h-7 rounded-lg border border-border-base bg-background-base px-2 text-12-regular text-text-base outline-none transition-colors focus:border-accent-base cursor-pointer"
-                        >
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                        <button
-                          onClick={() =>
-                            openDialog({ kind: "resetPassword", userId: user.id, username: user.username })
+                      <div class="flex items-center gap-2 shrink-0">
+                        <Show
+                          when={user.id !== auth.store.user?.id}
+                          fallback={
+                            <span class="rounded-full bg-accent-base/10 px-2.5 py-0.5 text-11-medium text-accent-base">
+                              You
+                            </span>
                           }
-                          class="h-7 rounded-lg border border-border-base bg-background-base px-2.5 text-12-medium text-text-base transition-colors hover:bg-surface-raised-base-hover"
                         >
-                          Reset password
-                        </button>
-                        <button
-                          onClick={() =>
-                            openDialog({ kind: "delete", userId: user.id, username: user.username })
-                          }
-                          class="h-7 rounded-lg border border-red-500/20 bg-red-500/5 px-2.5 text-12-medium text-red-500 transition-colors hover:bg-red-500/10 hover:border-red-500/30"
-                        >
-                          Remove
-                        </button>
-                      </Show>
+                          <select
+                            value={user.role}
+                            onChange={(e) => handleRoleChange(user.id, e.currentTarget.value as "admin" | "user")}
+                            class="h-7 rounded-lg border border-border-base bg-background-base px-2 text-12-regular text-text-base outline-none transition-colors focus:border-accent-base cursor-pointer"
+                          >
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          <button
+                            onClick={() =>
+                              openDialog({ kind: "resetPassword", userId: user.id, username: user.username })
+                            }
+                            class="h-7 rounded-lg border border-border-base bg-background-base px-2.5 text-12-medium text-text-base transition-colors hover:bg-surface-raised-base-hover"
+                          >
+                            Reset password
+                          </button>
+                          <button
+                            onClick={() =>
+                              openDialog({ kind: "delete", userId: user.id, username: user.username })
+                            }
+                            class="h-7 rounded-lg border border-red-500/20 bg-red-500/5 px-2.5 text-12-medium text-red-500 transition-colors hover:bg-red-500/10 hover:border-red-500/30"
+                          >
+                            Remove
+                          </button>
+                        </Show>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </For>
-            </div>
+                  )}
+                </For>
+              </div>
+            </Show>
           </Show>
         </div>
 

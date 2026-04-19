@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-04-18 (47)
+
+### Topic 4 (2/3): Admin panel — visibility
+
+Admin can now see at a glance who's active, when each user joined, and how many workspaces they have, plus search the list.
+
+**New features:**
+- **Stats bar at top** — three cards: total users, active today (last login < 24h), total workspaces across all users.
+- **Per-user metadata** — each row now shows "N workspace(s) · Last active X ago · Joined YYYY-MM-DD". Last-active reads "Never" for users the admin just created who haven't signed in yet.
+- **Search box** — live filter users by username (substring match, case-insensitive). Shows "No users match '…'" when the filter returns nothing.
+
+**Backend:**
+- `packages/opencode/src/auth/user.ts` — added `listUsersWithMeta()` which joins `UserSessionTable` to compute `last_login = MAX(session.time_created)` per user, and returns `created_at` from `UserTable.time_created`.
+- `packages/opencode/src/server/control/user-auth.ts` — `GET /user/list` now returns `UserListItem[]` including `created_at`, `last_login`, and `workspaceCount` (computed per-user by scanning `~/workspaces/<username>/`).
+
+**Frontend:**
+- `packages/app/src/context/auth.tsx` — exported `UserListItem` type; `listUsers()` returns the richer shape.
+- `packages/app/src/pages/admin.tsx` — stats bar + search input + metadata line per user; `formatRelative()` renders timestamps as `Xm ago` / `Xh ago` / `Xd ago` / `YYYY-MM-DD` for dates older than 30 days. Page width bumped from `max-w-lg` to `max-w-2xl` to fit the extra metadata comfortably.
+
+---
+
 ## 2026-04-18 (46)
 
 ### Topic 4 (1/3): Admin panel — safety & password management

@@ -10,6 +10,15 @@ type User = {
   defaultWorkspace?: string
 }
 
+export type UserListItem = {
+  id: string
+  username: string
+  role: "admin" | "user"
+  created_at: number
+  last_login: number | null
+  workspaceCount: number
+}
+
 type AuthStore = {
   user: User | null
   token: string | null
@@ -107,10 +116,10 @@ function AuthContext() {
     }
   }
 
-  const listUsers = async (): Promise<User[]> => {
+  const listUsers = async (): Promise<UserListItem[]> => {
     const res = await authFetch("/user/list")
     if (!res.ok) return []
-    return res.json() as Promise<User[]>
+    return res.json() as Promise<UserListItem[]>
   }
 
   // Returns undefined on success, or a user-facing error message on failure.
