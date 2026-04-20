@@ -7,6 +7,7 @@ import os from "os"
 import { UserAuth } from "@/auth/user"
 import { Database, like } from "@/storage"
 import { ProjectTable } from "@/project/project.sql"
+import { SessionTable } from "@/session/session.sql"
 
 const WORKSPACES_DIR = process.env.OPENCODE_WORKSPACES_DIR || path.join(os.homedir(), "workspaces")
 const DEFAULT_WORKSPACE_NAME = "my-first-project"
@@ -25,14 +26,21 @@ function getDefaultWorkspace(username: string): string {
   return path.join(WORKSPACES_DIR, username, DEFAULT_WORKSPACE_NAME)
 }
 
-// Remove Project DB rows that point into the deleted user's workspace.
-// Sessions have a project_id → orphaned sessions remain in the DB but are
-// invisible because listings go through the project. When a new user is
-// created with the same username, their fresh workspace won't inherit stale
-// projects or sessions.
-function deleteUserProjects(username: string): void {
+// Remove every DB row tied to the deleted user's workspace so a new user
+// created with the same username starts with a clean sidebar and no
+// carry-over chat history.
+//
+// Important subtlety: sessions are NOT always keyed by a per-workspace
+// project row. Many sessions use the shared `project_id = "global"` and are
+// only distinguished by the `directory` field. So dropping project rows
+// alone is not enough — we also have to delete session rows whose directory
+// is inside the user's workspace. Messages, parts, todos, session_entry,
+// and permission rows cascade via FK constraints (enabled in db.ts via
+// PRAGMA foreign_keys = ON).
+function deleteUserData(username: string): void {
   const prefix = path.join(WORKSPACES_DIR, username) + path.sep
   Database.transaction((db) => {
+    db.delete(SessionTable).where(like(SessionTable.directory, prefix + "%")).run()
     db.delete(ProjectTable).where(like(ProjectTable.worktree, prefix + "%")).run()
   })
 }
@@ -154,10 +162,10 @@ export function UserAuthRoutes(): Hono {
       if (c.req.param("id") === admin.id) return c.json({ error: "Cannot delete yourself" }, 400)
       const user = UserAuth.findById(c.req.param("id"))
       if (user) {
-        // Drop project rows first (while we still know the username path) so
-        // that re-creating a user with the same username starts with a clean
-        // sidebar and no carry-over sessions.
-        deleteUserProjects(user.username)
+        // Drop DB rows first (while we still know the username path) so that
+        // re-creating a user with the same username starts with a clean
+        // sidebar and no carry-over sessions or chat history.
+        deleteUserData(user.username)
         await renameUserWorkspace(user.username)
       }
       UserAuth.deleteUser(c.req.param("id"))
