@@ -8,7 +8,9 @@ Type=simple
 User=__USER__
 Group=__USER__
 WorkingDirectory=__PROJECT_DIR__
-Environment=NODE_ENV=production
+# Do NOT set NODE_ENV=production here. We run `vite dev` and Vite respects
+# NODE_ENV, which flips `import.meta.env.DEV` to false and makes the frontend
+# fall back to `location.origin` instead of the configured backend host/port.
 Environment=VITE_OPENCODE_SERVER_HOST=__SERVER_IP__
 Environment=VITE_OPENCODE_SERVER_PORT=4096
 ExecStart=__BUN_PATH__ run --cwd packages/app dev -- --port 3927 --host 0.0.0.0
