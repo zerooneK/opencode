@@ -159,23 +159,9 @@ export function UserAuthRoutes(): Hono {
         return c.json(true)
       },
     )
-    .put(
-      "/user/:id/password",
-      validator(
-        "json",
-        z.object({
-          password: z.string().min(6),
-        }),
-      ),
-      (c) => {
-        const admin = requireAdmin(c.req.header("Authorization"))
-        if (!admin) return c.json({ error: "Forbidden" }, 403)
-        const target = UserAuth.findById(c.req.param("id"))
-        if (!target) return c.json({ error: "User not found" }, 404)
-        UserAuth.resetPassword(target.id, c.req.valid("json").password)
-        return c.json(true)
-      },
-    )
+    // IMPORTANT: /user/me/password must be registered before /user/:id/password.
+    // Hono matches routes in registration order and `:id` would otherwise catch
+    // "me" and route the request to the admin-only reset-password handler.
     .put(
       "/user/me/password",
       validator(
@@ -191,6 +177,23 @@ export function UserAuthRoutes(): Hono {
         const { currentPassword, newPassword } = c.req.valid("json")
         const ok = UserAuth.changeOwnPassword(user.id, currentPassword, newPassword)
         if (!ok) return c.json({ error: "Current password is incorrect" }, 400)
+        return c.json(true)
+      },
+    )
+    .put(
+      "/user/:id/password",
+      validator(
+        "json",
+        z.object({
+          password: z.string().min(6),
+        }),
+      ),
+      (c) => {
+        const admin = requireAdmin(c.req.header("Authorization"))
+        if (!admin) return c.json({ error: "Forbidden" }, 403)
+        const target = UserAuth.findById(c.req.param("id"))
+        if (!target) return c.json({ error: "User not found" }, 404)
+        UserAuth.resetPassword(target.id, c.req.valid("json").password)
         return c.json(true)
       },
     )
