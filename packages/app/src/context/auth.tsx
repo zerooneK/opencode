@@ -122,6 +122,24 @@ function AuthContext() {
     return res.json() as Promise<UserListItem[]>
   }
 
+  // Safely pull a string error out of an unknown response body. Never returns
+  // an object — so we never accidentally render "[object Object]" in the UI.
+  const errorFrom = (body: unknown, status: number, fallback: string): string => {
+    if (body && typeof body === "object") {
+      const obj = body as Record<string, unknown>
+      if (typeof obj.error === "string") return obj.error
+      if (typeof obj.message === "string") return obj.message
+      const data = obj.data
+      if (data && typeof data === "object") {
+        const dataObj = data as Record<string, unknown>
+        if (typeof dataObj.message === "string") return dataObj.message
+      }
+      // Validator error or similar: stringify the body for debugging.
+      if (obj.error !== undefined) return `${fallback} (HTTP ${status}): ${JSON.stringify(obj.error)}`
+    }
+    return `${fallback} (HTTP ${status})`
+  }
+
   // Returns undefined on success, or a user-facing error message on failure.
   const createUser = async (
     username: string,
@@ -133,8 +151,8 @@ function AuthContext() {
       body: JSON.stringify({ username, password, role }),
     })
     if (res.ok) return undefined
-    const body = (await res.json().catch(() => null)) as { error?: string } | null
-    return body?.error ?? `Failed to create user (HTTP ${res.status})`
+    const body = await res.json().catch(() => null)
+    return errorFrom(body, res.status, "Failed to create user")
   }
 
   const deleteUser = async (id: string) => {
@@ -158,8 +176,8 @@ function AuthContext() {
       body: JSON.stringify({ password: newPassword }),
     })
     if (res.ok) return undefined
-    const body = (await res.json().catch(() => null)) as { error?: string } | null
-    return body?.error ?? `Failed to reset password (HTTP ${res.status})`
+    const body = await res.json().catch(() => null)
+    return errorFrom(body, res.status, "Failed to reset password")
   }
 
   // Current user changes their own password. Server verifies the current one.
@@ -172,8 +190,8 @@ function AuthContext() {
       body: JSON.stringify({ currentPassword, newPassword }),
     })
     if (res.ok) return undefined
-    const body = (await res.json().catch(() => null)) as { error?: string } | null
-    return body?.error ?? `Failed to change password (HTTP ${res.status})`
+    const body = await res.json().catch(() => null)
+    return errorFrom(body, res.status, "Failed to change password")
   }
 
   const listWorkspaces = async (): Promise<Array<{ name: string; path: string }>> => {
