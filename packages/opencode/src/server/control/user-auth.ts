@@ -5,6 +5,8 @@ import fs from "fs/promises"
 import path from "path"
 import os from "os"
 import { UserAuth } from "@/auth/user"
+import { Database, like } from "@/storage"
+import { ProjectTable } from "@/project/project.sql"
 
 const WORKSPACES_DIR = process.env.OPENCODE_WORKSPACES_DIR || path.join(os.homedir(), "workspaces")
 const DEFAULT_WORKSPACE_NAME = "my-first-project"
@@ -21,6 +23,18 @@ function getUserWorkspaceDir(username: string): string {
 
 function getDefaultWorkspace(username: string): string {
   return path.join(WORKSPACES_DIR, username, DEFAULT_WORKSPACE_NAME)
+}
+
+// Remove Project DB rows that point into the deleted user's workspace.
+// Sessions have a project_id → orphaned sessions remain in the DB but are
+// invisible because listings go through the project. When a new user is
+// created with the same username, their fresh workspace won't inherit stale
+// projects or sessions.
+function deleteUserProjects(username: string): void {
+  const prefix = path.join(WORKSPACES_DIR, username) + path.sep
+  Database.transaction((db) => {
+    db.delete(ProjectTable).where(like(ProjectTable.worktree, prefix + "%")).run()
+  })
 }
 
 async function renameUserWorkspace(username: string): Promise<void> {
@@ -139,7 +153,13 @@ export function UserAuthRoutes(): Hono {
       if (!admin) return c.json({ error: "Forbidden" }, 403)
       if (c.req.param("id") === admin.id) return c.json({ error: "Cannot delete yourself" }, 400)
       const user = UserAuth.findById(c.req.param("id"))
-      if (user) await renameUserWorkspace(user.username)
+      if (user) {
+        // Drop project rows first (while we still know the username path) so
+        // that re-creating a user with the same username starts with a clean
+        // sidebar and no carry-over sessions.
+        deleteUserProjects(user.username)
+        await renameUserWorkspace(user.username)
+      }
       UserAuth.deleteUser(c.req.param("id"))
       return c.json(true)
     })
