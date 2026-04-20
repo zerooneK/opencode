@@ -255,6 +255,96 @@ export function FileTabContent(props: { tab: string }) {
     },
   )
 
+  // Build the iframe HTML for a .html file. The iframe uses `srcdoc`, which
+  // has a `null` base URL — relative <link href="...css"> and <script src="...js">
+  // references can't resolve. We rewrite them as inline <style> and <script>
+  // tags by fetching each linked file from the same workspace directory.
+  // Only handles same-workspace relative paths; absolute http(s) links pass
+  // through untouched.
+  const inlineHtmlResources = async (html: string, htmlPath: string): Promise<string> => {
+    const dir = htmlPath.substring(0, htmlPath.lastIndexOf("/"))
+    const resolveRel = (ref: string) => {
+      if (/^(https?:|data:|\/)/i.test(ref) || ref.startsWith("//")) return null
+      const clean = ref.replace(/^\.\//, "")
+      return `${dir}/${clean}`
+    }
+    const fetchText = async (relPath: string): Promise<string | null> => {
+      try {
+        const res = await sdk.client.file.read({ path: relPath })
+        return res.data?.content ?? null
+      } catch {
+        return null
+      }
+    }
+
+    let result = html
+
+    // <link ... href="xxx" ...>  (stylesheet links only)
+    const linkRe = /<link\b([^>]*?)\bhref=(["'])([^"']+)\2([^>]*)\/?>/gi
+    const linkMatches = [...result.matchAll(linkRe)]
+    for (const match of linkMatches) {
+      const [full, attrsBefore, , href, attrsAfter] = match
+      const combined = attrsBefore + " " + attrsAfter
+      if (!/rel\s*=\s*["']?stylesheet/i.test(combined)) continue
+      const resolved = resolveRel(href)
+      if (!resolved) continue
+      const content = await fetchText(resolved)
+      if (content === null) continue
+      result = result.replace(full, `<style>\n${content}\n</style>`)
+    }
+
+    // <script ... src="xxx" ...></script>
+    const scriptRe = /<script\b([^>]*?)\bsrc=(["'])([^"']+)\2([^>]*)>\s*<\/script>/gi
+    const scriptMatches = [...result.matchAll(scriptRe)]
+    for (const match of scriptMatches) {
+      const [full, , , src] = match
+      const resolved = resolveRel(src)
+      if (!resolved) continue
+      const content = await fetchText(resolved)
+      if (content === null) continue
+      result = result.replace(full, `<script>\n${content}\n</script>`)
+    }
+
+    // Inject a small helper into the iframe that:
+    //  1. <base target="_self"> — default unknown-target links to stay in the iframe.
+    //  2. A click listener that intercepts `<a href="#x">` anchor-only links.
+    //     srcdoc iframes have no real URL, so hash-only clicks can escape to
+    //     the parent window and wipe the preview. Handle them manually by
+    //     scrolling to the matching element inside the iframe.
+    const bootstrap = `
+<base target="_self">
+<script>
+(function(){
+  document.addEventListener('click', function(e) {
+    var a = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (!a) return;
+    var href = a.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+    e.preventDefault();
+    var id = href.slice(1);
+    if (!id) { window.scrollTo({top:0, behavior:'smooth'}); return; }
+    var target = document.getElementById(id);
+    if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+})();
+</script>`
+    if (/<head[^>]*>/i.test(result)) {
+      result = result.replace(/<head([^>]*)>/i, (_m, attrs) => `<head${attrs}>${bootstrap}`)
+    } else {
+      result = bootstrap + result
+    }
+
+    return result
+  }
+
+  const [htmlInlined] = createResource(
+    () => (isHtmlFile() && state()?.loaded ? { p: path(), content: contents() } : undefined),
+    async (input) => {
+      if (!input.p) return input.content
+      return inlineHtmlResources(input.content, input.p)
+    },
+  )
+
   const downloadFile = async () => {
     const p = path()
     if (!p) return
@@ -604,7 +694,7 @@ export function FileTabContent(props: { tab: string }) {
       >
         <Switch>
           <Match when={isOfficeFile()}>{renderOfficePreview()}</Match>
-          <Match when={isHtmlFile()}>{renderHtmlPreview(contents())}</Match>
+          <Match when={isHtmlFile()}>{renderHtmlPreview(htmlInlined() ?? contents())}</Match>
           <Match when={isMarkdownFile()}>{renderMarkdownPreview(contents())}</Match>
         </Switch>
       </Show>

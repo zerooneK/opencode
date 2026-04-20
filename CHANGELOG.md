@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-04-20 (51)
+
+### Chore: rebrand to "T-Open Workspace"
+
+Local-only cosmetic change. Pixel-art "T" replaces the OpenCode square in `Mark` and `Splash` components at `packages/ui/src/components/logo.tsx`, using the existing `var(--icon-strong-base)` color so it stays theme-aware. Browser tab title at `packages/app/index.html` and login-page heading at `packages/app/src/pages/login.tsx` now read "T-Open Workspace".
+
+`Logo` (the word mark) and deep-in-menu i18n strings were not touched.
+
+---
+
+## 2026-04-20 (50)
+
+### Feat: HTML preview loads linked CSS/JS and handles anchor links
+
+**Before:** Opening a `.html` file showed the HTML structure but no styles (`<link rel="stylesheet" href="styles.css">`) or scripts (`<script src="script.js">`) — the `srcdoc` iframe has a null base URL so relative paths couldn't resolve. Clicking `<a href="#section">` anchors escaped the iframe and navigated the parent page, wiping the preview.
+
+**After:** `packages/app/src/pages/session/file-tabs.tsx` `inlineHtmlResources(html, path)` now:
+- Finds `<link rel="stylesheet" href="relative">` and `<script src="relative">` with relative paths
+- Fetches each linked file from the same workspace directory via the SDK
+- Replaces each tag with inline `<style>…</style>` / `<script>…</script>`
+- Injects a `<base target="_self">` and a small click-handler script into `<head>` that catches hash-only `<a href="#x">` clicks and scrolls to the element instead of letting the click escape the iframe
+
+Absolute `http(s)://` and protocol-relative (`//`) links pass through untouched. Images, CSS `@import`, and `background-image: url()` are not handled — good-enough for static landing-page demos.
+
+---
+
 ## 2026-04-18 (49)
 
 ### Feat: cost control — hide AI model picker from regular users
