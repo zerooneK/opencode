@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div class="mb-8 flex flex-col items-center gap-3">
           <Splash class="w-12 h-15" />
           <div class="text-center">
-            <h1 class="text-16-medium text-text-strong">OpenCode</h1>
+            <h1 class="text-16-medium text-text-strong">T-Open Workspace</h1>
             <p class="mt-1 text-13-regular text-text-weak">Sign in to continue</p>
           </div>
         </div>

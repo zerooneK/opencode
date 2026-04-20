@@ -9,8 +9,8 @@ export const Mark = (props: { class?: string }) => {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path data-slot="logo-logo-mark-shadow" d="M12 16H4V8H12V16Z" fill="var(--icon-weak-base)" />
-      <path data-slot="logo-logo-mark-o" d="M12 4H4V16H12V4ZM16 20H0V0H16V20Z" fill="var(--icon-strong-base)" />
+      {/* Pixel-art "T" matching the blocky OpenCode logo style. */}
+      <path d="M0 0H16V6H10V20H6V6H0V0Z" fill="var(--icon-strong-base)" />
     </svg>
   )
 }
@@ -25,8 +25,8 @@ export const Splash = (props: Pick<ComponentProps<"svg">, "ref" | "class">) => {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M60 80H20V40H60V80Z" fill="var(--icon-base)" />
-      <path d="M60 20H20V80H60V20ZM80 100H0V0H80V100Z" fill="var(--icon-strong-base)" />
+      {/* Pixel-art "T" scaled up to the splash canvas. */}
+      <path d="M0 0H80V30H50V100H30V30H0V0Z" fill="var(--icon-strong-base)" />
     </svg>
   )
 }
