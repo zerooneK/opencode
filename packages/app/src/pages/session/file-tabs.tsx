@@ -221,18 +221,24 @@ export function FileTabContent(props: { tab: string }) {
     if (!p) return false
     return /\.docx$/i.test(p)
   })
+  const isXlsxFile = createMemo(() => {
+    const p = path()
+    if (!p) return false
+    return /\.xlsx$/i.test(p)
+  })
+  const isOfficeFile = createMemo(() => isDocxFile() || isXlsxFile())
   // HTML and Markdown have both a pretty preview and a raw source view, so they
-  // get the Preview/Code toggle. DOCX only has a preview (converted via pandoc
-  // on the server) — showing raw bytes would be useless, so we just always
-  // render the preview and hide the toggle.
+  // get the Preview/Code toggle. DOCX/XLSX only have a preview (converted on
+  // the server) — showing raw bytes would be useless, so we just always render
+  // the preview and hide the toggle.
   const hasViewToggle = createMemo(() => isHtmlFile() || isMarkdownFile())
   const [viewMode, setViewMode] = createSignal<"preview" | "code">("preview")
-  const showPreview = createMemo(() => isDocxFile() || (hasViewToggle() && viewMode() === "preview"))
+  const showPreview = createMemo(() => isOfficeFile() || (hasViewToggle() && viewMode() === "preview"))
 
-  // Fetch pandoc-converted HTML for .docx files. Only runs when the user is
-  // looking at a .docx tab.
-  const [docxPreview] = createResource(
-    () => (isDocxFile() && state()?.loaded ? path() : undefined),
+  // Fetch server-rendered HTML preview for .docx (pandoc) and .xlsx (openpyxl).
+  // Only runs when the user is looking at a .docx or .xlsx tab.
+  const [officePreview] = createResource(
+    () => (isOfficeFile() && state()?.loaded ? path() : undefined),
     async (p) => {
       const url = new URL(`${sdk.url.replace(/\/$/, "")}/file/preview`)
       url.searchParams.set("path", p)
@@ -538,22 +544,22 @@ export function FileTabContent(props: { tab: string }) {
     </div>
   )
 
-  const renderDocxPreview = () => (
+  const renderOfficePreview = () => (
     <Switch>
-      <Match when={docxPreview.loading}>
+      <Match when={officePreview.loading}>
         <div class="flex items-center justify-center h-full text-text-weak">
           {language.t("common.loading")}
           {language.t("common.loading.ellipsis")}
         </div>
       </Match>
-      <Match when={docxPreview.error}>
+      <Match when={officePreview.error}>
         {(err) => (
           <div class="px-6 py-4 text-text-weak">
             {err() instanceof Error ? (err() as Error).message : String(err())}
           </div>
         )}
       </Match>
-      <Match when={docxPreview()}>{(html) => renderHtmlPreview(html())}</Match>
+      <Match when={officePreview()}>{(html) => renderHtmlPreview(html())}</Match>
     </Switch>
   )
 
@@ -597,7 +603,7 @@ export function FileTabContent(props: { tab: string }) {
         }
       >
         <Switch>
-          <Match when={isDocxFile()}>{renderDocxPreview()}</Match>
+          <Match when={isOfficeFile()}>{renderOfficePreview()}</Match>
           <Match when={isHtmlFile()}>{renderHtmlPreview(contents())}</Match>
           <Match when={isMarkdownFile()}>{renderMarkdownPreview(contents())}</Match>
         </Switch>

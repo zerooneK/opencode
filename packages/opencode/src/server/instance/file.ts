@@ -270,37 +270,102 @@ export const FileRoutes = lazy(() =>
         }
 
         const ext = path.extname(full).toLowerCase()
-        if (ext !== ".docx") {
-          return c.json({ error: "Unsupported file type — preview is only available for .docx" }, 400)
+        if (ext !== ".docx" && ext !== ".xlsx") {
+          return c.json({ error: "Unsupported file type — preview supports .docx and .xlsx" }, 400)
         }
 
-        // pandoc 2.19+ uses `--embed-resources --standalone`. Older versions
-        // (e.g. pandoc 2.9 shipped with Ubuntu 22.04) only understand the
-        // older `--self-contained` flag. Try the modern flags first; on
-        // "Unknown option" fall back to `--self-contained`.
-        const runPandoc = async (args: string[]) =>
-          execFileP("pandoc", args, { maxBuffer: 50 * 1024 * 1024, timeout: 30_000 })
+        if (ext === ".docx") {
+          // pandoc 2.19+ uses `--embed-resources --standalone`. Older versions
+          // (e.g. pandoc 2.9 shipped with Ubuntu 22.04) only understand the
+          // older `--self-contained` flag. Try the modern flags first; on
+          // "Unknown option" fall back to `--self-contained`.
+          const runPandoc = async (args: string[]) =>
+            execFileP("pandoc", args, { maxBuffer: 50 * 1024 * 1024, timeout: 30_000 })
+
+          try {
+            let result: Awaited<ReturnType<typeof runPandoc>>
+            try {
+              result = await runPandoc([full, "--from=docx", "--to=html5", "--embed-resources", "--standalone"])
+            } catch (err) {
+              const message = err instanceof Error ? err.message : ""
+              if (message.includes("Unknown option")) {
+                result = await runPandoc([full, "--from=docx", "--to=html5", "--self-contained"])
+              } else {
+                throw err
+              }
+            }
+            return new Response(result.stdout, {
+              headers: { "Content-Type": "text/html; charset=utf-8" },
+            })
+          } catch (err) {
+            const message =
+              err instanceof Error
+                ? err.message.includes("ENOENT")
+                  ? "pandoc is not installed on the server"
+                  : err.message
+                : "Preview failed"
+            return c.json({ error: message }, 500)
+          }
+        }
+
+        // .xlsx — use a small Python script with openpyxl to render an HTML
+        // table per sheet. openpyxl must be installed on the server.
+        const pythonScript = `
+import sys, html
+try:
+    from openpyxl import load_workbook
+except ImportError:
+    sys.stderr.write("openpyxl-missing")
+    sys.exit(1)
+
+wb = load_workbook(sys.argv[1], data_only=True, read_only=True)
+parts = []
+parts.append('<!DOCTYPE html><html><head><meta charset="utf-8">')
+parts.append('<style>'
+    'body{font-family:"Noto Sans Thai",system-ui,sans-serif;margin:0;padding:16px;background:#fff;color:#1a1a1a;}'
+    'h2{font-size:14px;margin:16px 0 8px;padding:4px 8px;background:#f5f5f5;border-left:3px solid #3b82f6;}'
+    'h2:first-child{margin-top:0;}'
+    'table{border-collapse:collapse;margin:0 0 16px;font-size:13px;}'
+    'td,th{border:1px solid #e5e5e5;padding:6px 10px;vertical-align:top;white-space:pre-wrap;}'
+    'tr:nth-child(even) td{background:#fafafa;}'
+    'tr:first-child td{background:#f0f9ff;font-weight:500;}'
+    '.empty{color:#999;font-style:italic;padding:8px;}'
+    '</style></head><body>')
+for sheet_name in wb.sheetnames:
+    sheet = wb[sheet_name]
+    parts.append(f'<h2>{html.escape(sheet_name)}</h2>')
+    rows = list(sheet.iter_rows(values_only=True))
+    if not rows or all(all(c is None for c in r) for r in rows):
+        parts.append('<div class="empty">(sheet is empty)</div>')
+        continue
+    parts.append('<table>')
+    for row in rows:
+        parts.append('<tr>')
+        for cell in row:
+            value = '' if cell is None else html.escape(str(cell))
+            parts.append(f'<td>{value}</td>')
+        parts.append('</tr>')
+    parts.append('</table>')
+parts.append('</body></html>')
+sys.stdout.write(''.join(parts))
+`
 
         try {
-          let result: Awaited<ReturnType<typeof runPandoc>>
-          try {
-            result = await runPandoc([full, "--from=docx", "--to=html5", "--embed-resources", "--standalone"])
-          } catch (err) {
-            const message = err instanceof Error ? err.message : ""
-            if (message.includes("Unknown option")) {
-              result = await runPandoc([full, "--from=docx", "--to=html5", "--self-contained"])
-            } else {
-              throw err
-            }
+          const { stdout, stderr } = await execFileP("python3", ["-c", pythonScript, full], {
+            maxBuffer: 50 * 1024 * 1024,
+            timeout: 30_000,
+          })
+          if (stderr && stderr.includes("openpyxl-missing")) {
+            return c.json({ error: "openpyxl is not installed on the server (try: pip install openpyxl)" }, 500)
           }
-          return new Response(result.stdout, {
+          return new Response(stdout, {
             headers: { "Content-Type": "text/html; charset=utf-8" },
           })
         } catch (err) {
           const message =
             err instanceof Error
               ? err.message.includes("ENOENT")
-                ? "pandoc is not installed on the server"
+                ? "python3 is not installed on the server"
                 : err.message
               : "Preview failed"
           return c.json({ error: message }, 500)
