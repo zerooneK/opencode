@@ -33,7 +33,13 @@ const lastRegistered = new Map<string, string>()
 const inFlight = new Map<string, Promise<void>>()
 const cacheKey = (userId: string, directory: string) => `${userId} ${directory}`
 
-const clientNameFor = (userId: string) => `user-bridge-${userId}`
+// MCP client name shown to the model and surfaced in tool IDs. Kept short
+// because the full tool name the AI sees is `<clientName>_<toolName>`.
+// We don't need a user ID here: MCP state is per-Instance (i.e. per workspace
+// directory), and each user's workspace is its own Instance, so there's no
+// cross-user collision.
+const MCP_CLIENT_NAME = "laptop"
+const clientNameFor = (_userId: string) => MCP_CLIENT_NAME
 
 async function register(input: {
   key: string

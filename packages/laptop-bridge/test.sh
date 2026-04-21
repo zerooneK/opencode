@@ -43,31 +43,31 @@ curl -sS -X POST http://localhost:3928/mcp \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 echo
 
-echo "=== CALL list_local_files ==="
+echo "=== CALL list_files ==="
 curl -sS -X POST http://localhost:3928/mcp \
   -H "Authorization: Bearer $TOKEN" \
   -H "Mcp-Session-Id: $SESSION" \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_local_files","arguments":{}}}'
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_files","arguments":{}}}'
 echo
 
-echo "=== CALL read_local_file example.txt ==="
+echo "=== CALL read_file example.txt ==="
 curl -sS -X POST http://localhost:3928/mcp \
   -H "Authorization: Bearer $TOKEN" \
   -H "Mcp-Session-Id: $SESSION" \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_local_file","arguments":{"path":"example.txt"}}}'
+  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"example.txt"}}}'
 echo
 
-echo "=== CALL write_local_file new.txt ==="
+echo "=== CALL write_file new.txt ==="
 curl -sS -X POST http://localhost:3928/mcp \
   -H "Authorization: Bearer $TOKEN" \
   -H "Mcp-Session-Id: $SESSION" \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"write_local_file","arguments":{"path":"new.txt","content":"from AI"}}}'
+  -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"write_file","arguments":{"path":"new.txt","content":"from AI"}}}'
 echo
 
 echo "=== written file ==="

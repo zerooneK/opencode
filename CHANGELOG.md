@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-21 (55)
+
+### Chore: shorter MCP tool names — `laptop_read_file` instead of `user-bridge-<uuid>_read_local_file`
+
+The AI now sees tool IDs like `laptop_read_file`, `laptop_write_file`, `laptop_list_files` — way easier to read than the previous `user-bridge-3c2d741d-b225-4ddb-8348-26ee86ff2399_list_local_files`. Function unchanged.
+
+- `packages/laptop-bridge/bridge.ts` — renamed `read_local_file` → `read_file`, `write_local_file` → `write_file`, `list_local_files` → `list_files`. Kept the "this is the user's laptop, not the server" emphasis in the descriptions so free models still pick them reliably.
+- `packages/opencode/src/server/instance/user-mcp-middleware.ts` — MCP client name is now `"laptop"` instead of `"user-bridge-<userId>"`. Safe because MCP state is per-Instance and each user's workspace is its own Instance, so there's no cross-user collision.
+- `packages/laptop-bridge/test.sh` — updated to the new tool names.
+
+Bridge + middleware restart required to pick up the change.
+
+---
+
 ## 2026-04-21 (54)
 
 ### Polish: MCP bridge small issues

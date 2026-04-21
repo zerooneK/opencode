@@ -93,9 +93,9 @@ const sessions = new Map<
 
 function registerTools(server: McpServer) {
   server.tool(
-    "read_local_file",
+    "read_file",
     "Read a text file from the user's LAPTOP (their local machine), NOT from the workspace on the server. Use this when the user says 'from my laptop', 'บนเครื่องฉัน', 'local file', 'my computer', or refers to a file that is not in the server workspace. Prefer this over any other read tool when the user mentions their laptop/local files.",
-    { path: z.string().describe("Path relative to the laptop bridge shared folder.") },
+    { path: z.string().describe("Path relative to the laptop shared folder.") },
     async ({ path: rel }) => {
       const full = safePath(rel)
       const content = await fs.readFile(full, "utf-8")
@@ -104,10 +104,10 @@ function registerTools(server: McpServer) {
   )
 
   server.tool(
-    "write_local_file",
+    "write_file",
     "Create or overwrite a text file on the user's LAPTOP (their local machine), NOT in the workspace on the server. Use this when the user says 'save to my laptop', 'บนเครื่องฉัน', 'local file', 'my computer'. Parent directories are created automatically.",
     {
-      path: z.string().describe("Path relative to the laptop bridge shared folder."),
+      path: z.string().describe("Path relative to the laptop shared folder."),
       content: z.string().describe("Full file content. Overwrites any existing content."),
     },
     async ({ path: rel, content }) => {
@@ -123,13 +123,13 @@ function registerTools(server: McpServer) {
   )
 
   server.tool(
-    "list_local_files",
+    "list_files",
     "List files and directories on the user's LAPTOP (their local machine), NOT in the workspace on the server. Use this when the user says 'files on my laptop', 'ไฟล์ในเครื่องฉัน', 'my local files'. Non-recursive.",
     {
       path: z
         .string()
         .optional()
-        .describe("Path relative to the laptop bridge shared folder. Defaults to the root."),
+        .describe("Path relative to the laptop shared folder. Defaults to the root."),
     },
     async ({ path: rel }) => {
       const full = safePath(rel ?? "")
