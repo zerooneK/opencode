@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-04-21 (56)
+
+### Feat: laptop bridge reads `.docx`, `.xlsx`/`.xls`, and `.pdf`
+
+The AI can now read Word docs, Excel spreadsheets, and PDFs from the user's laptop — not just plain text. This matches the file types office users actually store: meeting notes in Word, budgets in Excel, contracts/reports in PDF.
+
+- `packages/laptop-bridge/package.json` — added `mammoth@^1.8.0` (DOCX → text), `xlsx@^0.18.5` (spreadsheet → CSV), `pdf-parse@^1.1.1` (PDF → text).
+- `packages/laptop-bridge/bridge.ts` — new `readFileAsText()` helper that dispatches by extension. Text files unchanged. DOCX runs through mammoth's `extractRawText`. XLSX/XLS loads every sheet and emits a `=== Sheet: <name> ===` header followed by CSV rows. PDF buffers the file and runs `pdf-parse`. Parsers are dynamically imported the first time they're needed so startup stays fast for users who only ever read text files.
+- `read_file` tool description now lists supported formats so the AI knows it can pull `.docx` / `.xlsx` / `.pdf` directly without asking the user to convert.
+
+Smoke-tested end-to-end against a Word doc, an Excel workbook with a `Data` sheet, and a minimal PDF — all three returned correct text.
+
+**User action:** restart the bridge (`bun bridge.ts ~/Documents`) so the new deps load. No backend or frontend restart needed.
+
+---
+
 ## 2026-04-21 (55)
 
 ### Chore: shorter MCP tool names — `laptop_read_file` instead of `user-bridge-<uuid>_read_local_file`

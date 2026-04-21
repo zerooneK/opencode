@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.27.1",
+    "mammoth": "^1.8.0",
+    "pdf-parse": "^1.1.1",
+    "xlsx": "^0.18.5",
     "zod": "catalog:"
   }
 }

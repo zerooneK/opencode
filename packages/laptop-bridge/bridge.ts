@@ -22,6 +22,14 @@ import os from "node:os"
 import path from "node:path"
 import { z } from "zod"
 
+// Text-extraction helpers for office formats. Dynamically imported inside
+// read_file so users who never ask for .docx / .pdf don't pay the startup cost.
+type DocxText = (input: { path: string }) => Promise<{ value: string }>
+type PdfText = (buffer: Buffer) => Promise<{ text: string }>
+let mammothExtract: DocxText | undefined
+let pdfParse: PdfText | undefined
+let XLSX: typeof import("xlsx") | undefined
+
 // ─── CLI args ───────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2)
@@ -91,15 +99,54 @@ const sessions = new Map<
   { server: McpServer; transport: WebStandardStreamableHTTPServerTransport }
 >()
 
+// Extracts text from any supported file by extension. Binary office formats
+// use their own parser; everything else is read as UTF-8 text.
+async function readFileAsText(fullPath: string): Promise<string> {
+  const ext = path.extname(fullPath).toLowerCase()
+
+  if (ext === ".docx") {
+    if (!mammothExtract) {
+      const mod = (await import("mammoth")) as unknown as { extractRawText: DocxText }
+      mammothExtract = mod.extractRawText
+    }
+    const { value } = await mammothExtract({ path: fullPath })
+    return value
+  }
+
+  if (ext === ".xlsx" || ext === ".xls") {
+    if (!XLSX) XLSX = await import("xlsx")
+    const workbook = XLSX.readFile(fullPath)
+    const sheets = workbook.SheetNames.map((name) => {
+      const sheet = workbook.Sheets[name]
+      const csv = XLSX!.utils.sheet_to_csv(sheet)
+      return `=== Sheet: ${name} ===\n${csv}`
+    })
+    return sheets.join("\n\n")
+  }
+
+  if (ext === ".pdf") {
+    if (!pdfParse) {
+      // pdf-parse's default export quirk: it exports a function via CommonJS.
+      const mod: any = await import("pdf-parse")
+      pdfParse = (mod.default ?? mod) as PdfText
+    }
+    const buffer = await fs.readFile(fullPath)
+    const { text } = await pdfParse(buffer)
+    return text
+  }
+
+  return await fs.readFile(fullPath, "utf-8")
+}
+
 function registerTools(server: McpServer) {
   server.tool(
     "read_file",
-    "Read a text file from the user's LAPTOP (their local machine), NOT from the workspace on the server. Use this when the user says 'from my laptop', 'บนเครื่องฉัน', 'local file', 'my computer', or refers to a file that is not in the server workspace. Prefer this over any other read tool when the user mentions their laptop/local files.",
+    "Read a file from the user's LAPTOP (their local machine), NOT from the workspace on the server. Automatically handles text files (.txt, .md, .json, .csv, .py, etc.), Word documents (.docx), Excel spreadsheets (.xlsx, .xls), and PDFs (.pdf). Use this whenever the user says 'from my laptop', 'บนเครื่องฉัน', 'local file', 'my computer', or names a file that isn't in the server workspace. Prefer this over any other read tool when the user mentions their laptop/local files.",
     { path: z.string().describe("Path relative to the laptop shared folder.") },
     async ({ path: rel }) => {
       const full = safePath(rel)
-      const content = await fs.readFile(full, "utf-8")
-      return { content: [{ type: "text", text: content }] }
+      const text = await readFileAsText(full)
+      return { content: [{ type: "text", text }] }
     },
   )
 
