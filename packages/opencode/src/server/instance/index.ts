@@ -27,11 +27,13 @@ import { ProviderRoutes } from "./provider"
 import { EventRoutes } from "./event"
 import { SyncRoutes } from "./sync"
 import { WorkspaceRouterMiddleware } from "./middleware"
+import { UserMcpMiddleware } from "./user-mcp-middleware"
 import { AppRuntime } from "@/effect/app-runtime"
 
 export const InstanceRoutes = (upgrade: UpgradeWebSocket): Hono => {
   const app = new Hono()
     .use(WorkspaceRouterMiddleware(upgrade))
+    .use(UserMcpMiddleware)
     .route("/project", ProjectRoutes())
     .route("/pty", PtyRoutes(upgrade))
     .route("/config", ConfigRoutes())

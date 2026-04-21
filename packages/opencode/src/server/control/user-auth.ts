@@ -225,6 +225,85 @@ export function UserAuthRoutes(): Hono {
         return c.json(true)
       },
     )
+    // ── MCP bridge endpoints ────────────────────────────────────────────────
+    // Each user can register one remote MCP server (typically a laptop bridge
+    // script) whose URL + bearer token we store in app_user. At chat time the
+    // backend reads these and adds the server to the user's MCP tools.
+    .get("/user/me/mcp", (c) => {
+      const user = requireUser(c.req.header("Authorization"))
+      if (!user) return c.json({ error: "Unauthorized" }, 401)
+      const mcp = UserAuth.getMcp(user.id)
+      if (!mcp) return c.json({ configured: false })
+      return c.json({ configured: true, url: mcp.url, token: mcp.token })
+    })
+    .put(
+      "/user/me/mcp",
+      validator(
+        "json",
+        z.object({
+          url: z.string().url(),
+          token: z.string().min(1),
+        }),
+      ),
+      (c) => {
+        const user = requireUser(c.req.header("Authorization"))
+        if (!user) return c.json({ error: "Unauthorized" }, 401)
+        const { url, token } = c.req.valid("json")
+        UserAuth.setMcp(user.id, { url, token })
+        return c.json({ configured: true, url, token })
+      },
+    )
+    .delete("/user/me/mcp", (c) => {
+      const user = requireUser(c.req.header("Authorization"))
+      if (!user) return c.json({ error: "Unauthorized" }, 401)
+      UserAuth.setMcp(user.id, null)
+      return c.json({ configured: false })
+    })
+    .post(
+      "/user/me/mcp/test",
+      validator(
+        "json",
+        z.object({
+          url: z.string().url(),
+          token: z.string().min(1),
+        }),
+      ),
+      async (c) => {
+        const user = requireUser(c.req.header("Authorization"))
+        if (!user) return c.json({ error: "Unauthorized" }, 401)
+        const { url, token } = c.req.valid("json")
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            signal: AbortSignal.timeout(5000),
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              Accept: "application/json, text/event-stream",
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "initialize",
+              params: {
+                protocolVersion: "2024-11-05",
+                capabilities: {},
+                clientInfo: { name: "t-open-workspace", version: "1.0.0" },
+              },
+            }),
+          })
+          if (!res.ok) {
+            return c.json({ ok: false, error: `HTTP ${res.status}` }, 200)
+          }
+          const data = (await res.json().catch(() => null)) as { result?: { serverInfo?: { name?: string } } } | null
+          const serverName = data?.result?.serverInfo?.name ?? "unknown"
+          return c.json({ ok: true, serverName })
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error"
+          return c.json({ ok: false, error: message }, 200)
+        }
+      },
+    )
     .get("/user/workspaces", async (c) => {
       const user = requireUser(c.req.header("Authorization"))
       if (!user) return c.json({ error: "Unauthorized" }, 401)

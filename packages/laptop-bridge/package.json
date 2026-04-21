@@ -1,0 +1,17 @@
+{
+  "name": "@t-open/laptop-bridge",
+  "version": "0.1.0",
+  "description": "Expose a folder on the user's laptop to T-Open Workspace via MCP.",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "t-open-bridge": "./bridge.ts"
+  },
+  "scripts": {
+    "start": "bun run bridge.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "zod": "catalog:"
+  }
+}

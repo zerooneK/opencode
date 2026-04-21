@@ -209,6 +209,51 @@ function AuthContext() {
     return res.json() as Promise<{ name: string; path: string }>
   }
 
+  // Laptop-bridge MCP config for the current user.
+  const getMcp = async (): Promise<{ url: string; token: string } | null> => {
+    const res = await authFetch("/user/me/mcp")
+    if (!res.ok) return null
+    const body = (await res.json().catch(() => null)) as
+      | { configured: false }
+      | { configured: true; url: string; token: string }
+      | null
+    if (!body || !body.configured) return null
+    return { url: body.url, token: body.token }
+  }
+
+  const saveMcp = async (url: string, token: string): Promise<string | undefined> => {
+    const res = await authFetch("/user/me/mcp", {
+      method: "PUT",
+      body: JSON.stringify({ url, token }),
+    })
+    if (res.ok) return undefined
+    const body = await res.json().catch(() => null)
+    return errorFrom(body, res.status, "Failed to save MCP config")
+  }
+
+  const clearMcp = async (): Promise<string | undefined> => {
+    const res = await authFetch("/user/me/mcp", { method: "DELETE" })
+    if (res.ok) return undefined
+    const body = await res.json().catch(() => null)
+    return errorFrom(body, res.status, "Failed to clear MCP config")
+  }
+
+  const testMcp = async (
+    url: string,
+    token: string,
+  ): Promise<{ ok: boolean; serverName?: string; error?: string }> => {
+    const res = await authFetch("/user/me/mcp/test", {
+      method: "POST",
+      body: JSON.stringify({ url, token }),
+    })
+    const body = (await res.json().catch(() => null)) as
+      | { ok: true; serverName: string }
+      | { ok: false; error: string }
+      | null
+    if (!body) return { ok: false, error: `HTTP ${res.status}` }
+    return body
+  }
+
   return {
     store,
     login,
@@ -221,6 +266,10 @@ function AuthContext() {
     changeOwnPassword,
     listWorkspaces,
     createWorkspace,
+    getMcp,
+    saveMcp,
+    clearMcp,
+    testMcp,
   }
 }
 

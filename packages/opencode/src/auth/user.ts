@@ -137,6 +137,35 @@ export namespace UserAuth {
     })
   }
 
+  // The user's configured laptop-bridge endpoint. Returned to the web UI when
+  // rendering the settings page, and used by the server to register the MCP
+  // server at chat time.
+  export type McpConfig = {
+    url: string
+    token: string
+  }
+
+  export function getMcp(id: string): McpConfig | undefined {
+    const row = Database.use((db) =>
+      db
+        .select({ url: UserTable.mcp_url, token: UserTable.mcp_token })
+        .from(UserTable)
+        .where(eq(UserTable.id, id))
+        .get(),
+    )
+    if (!row || !row.url || !row.token) return undefined
+    return { url: row.url, token: row.token }
+  }
+
+  export function setMcp(id: string, mcp: McpConfig | null): void {
+    Database.transaction((db) => {
+      db.update(UserTable)
+        .set({ mcp_url: mcp?.url ?? null, mcp_token: mcp?.token ?? null })
+        .where(eq(UserTable.id, id))
+        .run()
+    })
+  }
+
   // Admin-initiated: overwrite a user's password without knowing the old one.
   // Also invalidates all of that user's sessions so they must sign in again.
   export function resetPassword(id: string, newPassword: string): void {

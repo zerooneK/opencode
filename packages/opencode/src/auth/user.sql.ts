@@ -6,6 +6,8 @@ export const UserTable = sqliteTable("app_user", {
   username: text().notNull().unique(),
   password: text().notNull(),
   role: text().$type<"admin" | "user">().notNull().default("user"),
+  mcp_url: text(),
+  mcp_token: text(),
   ...Timestamps,
 })
 

@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-04-21 (52)
+
+### Feat: MCP bridge — AI can read/write files on the user's laptop
+
+Path 3 of the MCP plan: the server-side AI connects to a small HTTP MCP server running on each user's laptop. Each user picks ONE folder on their laptop to expose; the AI gets three tools: `read_local_file`, `write_local_file`, `list_local_files`. Bearer-token authentication prevents anyone else on the LAN from accessing the folder.
+
+**New package — `packages/laptop-bridge`:**
+- Single-file Bun script (`bridge.ts`) users run on their laptop.
+- Prints its LAN URL and a random bearer token on startup.
+- Uses `@modelcontextprotocol/sdk`'s `WebStandardStreamableHTTPServerTransport` in stateful mode (session IDs) so OpenCode's existing `StreamableHTTPClientTransport` can connect without extra code.
+- `safePath()` refuses any path that escapes the chosen folder.
+
+**Server — per-user MCP config:**
+- New migration `20260421060000_add_user_mcp` adds `mcp_url`, `mcp_token` columns to `app_user`.
+- `UserAuth.getMcp(id)` and `UserAuth.setMcp(id, cfg | null)` read/write.
+- New routes in `packages/opencode/src/server/control/user-auth.ts`:
+  - `GET /user/me/mcp` — returns the current config (or `{ configured: false }`)
+  - `PUT /user/me/mcp` — save
+  - `DELETE /user/me/mcp` — clear
+  - `POST /user/me/mcp/test` — server-side probe that sends an MCP `initialize` and returns the server name or an error message
+
+**Runtime registration — `packages/opencode/src/server/instance/user-mcp-middleware.ts`:**
+- New Hono middleware, registered after `WorkspaceRouterMiddleware` inside `InstanceRoutes`.
+- On each request, looks up the caller's MCP config and calls `MCP.Service.add("user-bridge-<userId>", { type: "remote", url, headers: { Authorization: "Bearer …" } })`.
+- In-memory `lastRegistered` map skips re-registration if the URL hasn't changed since the last call — avoids reconnecting on every chat message.
+- Failures are logged but never block the request.
+
+**Frontend — Settings tab:**
+- New `SettingsMcp` component at `packages/app/src/components/settings-mcp.tsx` with a URL input, token input, Test connection button, Save button, and Disconnect button.
+- Added as a "My Laptop" tab in `DialogSettings`.
+- `useAuth()` gained `getMcp`, `saveMcp`, `clearMcp`, `testMcp`.
+- Includes a Windows Firewall note so pilot users know what to expect on first run.
+
+---
+
 ## 2026-04-20 (51)
 
 ### Chore: rebrand to "T-Open Workspace"
