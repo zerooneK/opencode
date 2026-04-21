@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-04-21 (54)
+
+### Polish: MCP bridge small issues
+
+Three small items spotted while testing MCP end-to-end.
+
+**Issue 3 — small_model defaulted to paid Claude Haiku.**
+OpenCode picks `claude-haiku-4-5` as the default `small_model` (for title/summary/compaction agents) via a hardcoded priority list in `provider.ts` when `cfg.small_model` is unset. With only free-tier OpenRouter credits, those title generations returned HTTP 402 "Insufficient credits" in the logs. Fix: pin `small_model` in `~/.config/opencode/opencode.json` to the same free model as the main chat.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "small_model": "openrouter/minimax/minimax-m2.5:free"
+}
+```
+
+**Issue 1 — thundering herd on first chat.**
+The frontend fires many parallel HTTP requests on a page load (agents, providers, config, path, vcs, permissions, commands, question, session polling, ...). All of them hit `UserMcpMiddleware` simultaneously and each one saw an empty `lastRegistered`, so each one started its own `MCP.add()`. The bridge's brand-new fresh-per-session transports couldn't handle the concurrent initializes cleanly and most reported `needs_auth` until one succeeded.
+
+Fix (`packages/opencode/src/server/instance/user-mcp-middleware.ts`): added a single-flight promise map keyed by `(userId, directory)`. The first request for a given key starts the registration; concurrent requests `await` the same promise instead of launching a duplicate. Once settled, `inFlight` clears and `lastRegistered` records the URL so subsequent requests skip.
+
+**Issue 2 — `GET /mcp` returns `{}` for runtime-added bridges. BY DESIGN.**
+Investigated, then closed as intentional.
+
+`MCP.status()` in upstream opencode (`packages/opencode/src/mcp/mcp.ts:571`) iterates `cfg.mcp` (opencode.json-declared servers) only, not the in-memory `s.clients`. Runtime-added per-user bridges live in `s.clients` and `s.status` but don't appear in `cfg.mcp`, so they're invisible to the public `/mcp` endpoint. This is correct for privacy — admin shouldn't see user1's bridge URL via `/mcp`.
+
+The AI still receives the tools (tool listing goes through `MCP.Service.tools()` which reads `s.clients` directly), so nothing breaks in the chat flow. The Settings page's "Test connection" button is the right UX for showing per-user status.
+
+No code change. Just documentation so the next developer isn't confused by the "empty" response.
+
+---
+
 ## 2026-04-21 (53)
 
 ### Fix: MCP bridge actually reaches the AI
