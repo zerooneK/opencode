@@ -77,76 +77,97 @@ function safePath(rel: string): string {
   return resolved
 }
 
-// ─── Tools ──────────────────────────────────────────────────────────────────
+// ─── Server + transport factory ─────────────────────────────────────────────
 
-const server = new McpServer(
-  { name: "t-open-laptop-bridge", version: "0.1.0" },
-  { capabilities: { tools: {} } },
-)
+// An McpServer holds one-shot initialization state — once a client has sent
+// `initialize`, subsequent initializes on the same server fail with
+// "Server already initialized". To support reconnects and multiple concurrent
+// clients we create a FRESH McpServer + Transport pair per session.
+//
+// Sessions are indexed by the Mcp-Session-Id header the transport hands back
+// on the first request.
+const sessions = new Map<
+  string,
+  { server: McpServer; transport: WebStandardStreamableHTTPServerTransport }
+>()
 
-server.tool(
-  "read_local_file",
-  "Read a text file from the user's local shared folder.",
-  { path: z.string().describe("Path relative to the shared folder.") },
-  async ({ path: rel }) => {
-    const full = safePath(rel)
-    const content = await fs.readFile(full, "utf-8")
-    return { content: [{ type: "text", text: content }] }
-  },
-)
+function registerTools(server: McpServer) {
+  server.tool(
+    "read_local_file",
+    "Read a text file from the user's LAPTOP (their local machine), NOT from the workspace on the server. Use this when the user says 'from my laptop', 'บนเครื่องฉัน', 'local file', 'my computer', or refers to a file that is not in the server workspace. Prefer this over any other read tool when the user mentions their laptop/local files.",
+    { path: z.string().describe("Path relative to the laptop bridge shared folder.") },
+    async ({ path: rel }) => {
+      const full = safePath(rel)
+      const content = await fs.readFile(full, "utf-8")
+      return { content: [{ type: "text", text: content }] }
+    },
+  )
 
-server.tool(
-  "write_local_file",
-  "Create or overwrite a text file in the user's local shared folder. Parent directories are created automatically.",
-  {
-    path: z.string().describe("Path relative to the shared folder."),
-    content: z.string().describe("Full file content. Overwrites any existing content."),
-  },
-  async ({ path: rel, content }) => {
-    const full = safePath(rel)
-    await fs.mkdir(path.dirname(full), { recursive: true })
-    await fs.writeFile(full, content, "utf-8")
-    return {
-      content: [{ type: "text", text: `Wrote ${content.length} characters to ${rel}` }],
-    }
-  },
-)
+  server.tool(
+    "write_local_file",
+    "Create or overwrite a text file on the user's LAPTOP (their local machine), NOT in the workspace on the server. Use this when the user says 'save to my laptop', 'บนเครื่องฉัน', 'local file', 'my computer'. Parent directories are created automatically.",
+    {
+      path: z.string().describe("Path relative to the laptop bridge shared folder."),
+      content: z.string().describe("Full file content. Overwrites any existing content."),
+    },
+    async ({ path: rel, content }) => {
+      const full = safePath(rel)
+      await fs.mkdir(path.dirname(full), { recursive: true })
+      await fs.writeFile(full, content, "utf-8")
+      return {
+        content: [
+          { type: "text", text: `Wrote ${content.length} characters to ${rel} on the user's laptop` },
+        ],
+      }
+    },
+  )
 
-server.tool(
-  "list_local_files",
-  "List files and directories inside the shared folder (non-recursive).",
-  {
-    path: z
-      .string()
-      .optional()
-      .describe("Path relative to the shared folder. Defaults to the root."),
-  },
-  async ({ path: rel }) => {
-    const full = safePath(rel ?? "")
-    const entries = await fs.readdir(full, { withFileTypes: true })
-    const lines = entries
-      .sort((a, b) => {
-        if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1
-        return a.name.localeCompare(b.name)
-      })
-      .map((e) => `${e.isDirectory() ? "[DIR]" : "     "} ${e.name}`)
-    return {
-      content: [{ type: "text", text: lines.join("\n") || "(empty)" }],
-    }
-  },
-)
+  server.tool(
+    "list_local_files",
+    "List files and directories on the user's LAPTOP (their local machine), NOT in the workspace on the server. Use this when the user says 'files on my laptop', 'ไฟล์ในเครื่องฉัน', 'my local files'. Non-recursive.",
+    {
+      path: z
+        .string()
+        .optional()
+        .describe("Path relative to the laptop bridge shared folder. Defaults to the root."),
+    },
+    async ({ path: rel }) => {
+      const full = safePath(rel ?? "")
+      const entries = await fs.readdir(full, { withFileTypes: true })
+      const lines = entries
+        .sort((a, b) => {
+          if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1
+          return a.name.localeCompare(b.name)
+        })
+        .map((e) => `${e.isDirectory() ? "[DIR]" : "     "} ${e.name}`)
+      return {
+        content: [{ type: "text", text: lines.join("\n") || "(empty)" }],
+      }
+    },
+  )
+}
 
-// ─── HTTP transport ─────────────────────────────────────────────────────────
-
-// Stateful mode: the transport persists across requests and uses
-// Mcp-Session-Id headers. The SDK explicitly forbids reusing a stateless
-// transport across requests, and OpenCode's StreamableHTTPClientTransport
-// negotiates sessions automatically, so this is the natural fit.
-const transport = new WebStandardStreamableHTTPServerTransport({
-  sessionIdGenerator: () => crypto.randomUUID(),
-  enableJsonResponse: true, // no SSE streams; simple JSON responses
-})
-await server.connect(transport)
+async function createSession() {
+  const server = new McpServer(
+    { name: "t-open-laptop-bridge", version: "0.1.0" },
+    { capabilities: { tools: {} } },
+  )
+  registerTools(server)
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: () => crypto.randomUUID(),
+    enableJsonResponse: true,
+    onsessioninitialized: (sessionId) => {
+      sessions.set(sessionId, { server, transport })
+    },
+    onsessionclosed: (sessionId) => {
+      const entry = sessions.get(sessionId)
+      sessions.delete(sessionId)
+      entry?.server.close().catch(() => {})
+    },
+  })
+  await server.connect(transport)
+  return transport
+}
 
 // ─── Bun server ─────────────────────────────────────────────────────────────
 
@@ -171,6 +192,18 @@ const bun = Bun.serve({
       })
     }
 
+    // If the client sent a session ID, route to that session's transport.
+    // Otherwise this is either a new session (initialize) or a client calling
+    // without session state — either way, spin up a fresh pair.
+    const sessionId = req.headers.get("mcp-session-id")
+    if (sessionId) {
+      const existing = sessions.get(sessionId)
+      if (existing) return existing.transport.handleRequest(req)
+      // Client sent a session ID we don't know about. Transport will 404 it
+      // gracefully, and the client will retry without session ID.
+    }
+
+    const transport = await createSession()
     return transport.handleRequest(req)
   },
 })
@@ -213,7 +246,10 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => {
     console.log("\nShutting down...")
     bun.stop()
-    await server.close().catch(() => {})
+    // Close every live session.
+    await Promise.all(
+      Array.from(sessions.values()).map(({ server }) => server.close().catch(() => {})),
+    )
     process.exit(0)
   })
 }

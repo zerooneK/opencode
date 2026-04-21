@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-04-21 (53)
+
+### Fix: MCP bridge actually reaches the AI
+
+Three bugs found during pilot-day end-to-end testing — each of which made the AI not see the `read_local_file` / `write_local_file` / `list_local_files` tools even though the MCP config was saved and the bridge was running:
+
+1. **Bridge rejected second `initialize` with "Server already initialized".** The bridge used a single shared `McpServer` + `Transport` for every HTTP request; the SDK's server is one-shot and rejects duplicate initializes. Fix: create a fresh `McpServer` + `WebStandardStreamableHTTPServerTransport` **per session**, track them in a `Map<sessionId, ...>`, and route subsequent requests by `Mcp-Session-Id` header. `onsessionclosed` cleans up.
+2. **Middleware cached the URL even when registration failed.** `lastRegistered.set(userId, url)` ran on any `MCP.add()` call regardless of actual connection status. A first-time failure (bad token, bridge down) poisoned the cache so every later request silently skipped retry. Fix: only cache when `result.status[name].status === "connected"`; log a clear `did not connect` warning otherwise.
+3. **MCP state is per-Instance, and each workspace directory is its own Instance.** Caching by `userId` alone registered MCP in one Instance (the first request's directory) but chat requests live in a different Instance (the workspace directory) and never saw the MCP. Fix: cache key is now `(userId, directory)`. `Instance.directory` is read from ALS inside the middleware.
+
+**Also:** strengthened tool descriptions on the bridge so free models (MiniMax, Gemma) reliably pick `read_local_file` when the user mentions "laptop", "บนเครื่องฉัน", or "local file".
+
+**Files:**
+- `packages/laptop-bridge/bridge.ts` — per-session server+transport
+- `packages/opencode/src/server/instance/user-mcp-middleware.ts` — connected-only cache, per-directory key, directory field in logs
+- `packages/app/src/components/settings-mcp.tsx` — use `createEffect` instead of top-level call so stored URL+token pre-fill the inputs reactively
+
+Verified end-to-end: admin user with laptop bridge running → chat "ใช้ list_local_files แสดงไฟล์ใน laptop" → AI calls `user-bridge-<id>-list_local_files` → returns the file list.
+
+---
+
 ## 2026-04-21 (52)
 
 ### Feat: MCP bridge — AI can read/write files on the user's laptop

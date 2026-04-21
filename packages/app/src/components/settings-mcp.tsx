@@ -1,4 +1,4 @@
-import { Component, createResource, createSignal, Match, Show, Switch } from "solid-js"
+import { Component, createEffect, createResource, createSignal, Match, Show, Switch } from "solid-js"
 import { useAuth } from "@/context/auth"
 
 type TestState =
@@ -19,13 +19,14 @@ export const SettingsMcp: Component = () => {
   const [testState, setTestState] = createSignal<TestState>({ kind: "idle" })
 
   // When the fetched config loads, pre-fill the inputs so the user sees their
-  // current settings.
-  const syncFromStored = () => {
+  // current settings. Done inside createEffect so we re-sync whenever the
+  // resource resolves or refetches.
+  createEffect(() => {
     const current = stored()
     if (!current) return
     setUrl(current.url)
     setToken(current.token)
-  }
+  })
 
   const handleTest = async () => {
     setTestState({ kind: "testing" })
@@ -67,9 +68,6 @@ export const SettingsMcp: Component = () => {
     setSavedMessage("Cleared.")
     refetch()
   }
-
-  // Refresh the form when the fetch resolves.
-  syncFromStored()
 
   return (
     <div class="flex flex-col gap-6 p-6 overflow-y-auto">
