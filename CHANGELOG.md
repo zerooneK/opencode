@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-22 (57)
+
+### Chore: track project guidance + peer dep
+
+- `CLAUDE.md` — added to the repo so Claude Code and any new developer picks up the T-Open Workspace workflow rules, architecture notes, and command cheatsheet on first session instead of re-learning from scratch.
+- `packages/opencode/package.json` — added `react@19.2.5` as a devDependency. Surfaced by `bun install` as a peer dep while the workspace was being reconciled; pinning it locks the version and keeps typecheck green across fresh installs.
+
+---
+
 ## 2026-04-21 (56)
 
 ### Feat: laptop bridge reads `.docx`, `.xlsx`/`.xls`, and `.pdf`
