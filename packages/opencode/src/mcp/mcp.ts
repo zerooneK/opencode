@@ -220,6 +220,7 @@ interface State {
 
 export interface Interface {
   readonly status: () => Effect.Effect<Record<string, Status>>
+  readonly hasConnectedClient: () => Effect.Effect<boolean>
   readonly clients: () => Effect.Effect<Record<string, MCPClient>>
   readonly tools: () => Effect.Effect<Record<string, Tool>>
   readonly prompts: () => Effect.Effect<Record<string, PromptInfo & { client: string }>>
@@ -583,6 +584,16 @@ export const layer = Layer.effect(
       return result
     })
 
+    // True if at least one MCP client is currently connected in this Instance,
+    // regardless of whether the client was declared in the config file or
+    // added at runtime (e.g. the per-user laptop-bridge registered by
+    // UserMcpMiddleware). Used by the tool registry to gate server-side
+    // filesystem tools.
+    const hasConnectedClient = Effect.fn("MCP.hasConnectedClient")(function* () {
+      const s = yield* InstanceState.get(state)
+      return Object.values(s.status).some((st) => st.status === "connected")
+    })
+
     const clients = Effect.fn("MCP.clients")(function* () {
       const s = yield* InstanceState.get(state)
       return s.clients
@@ -891,6 +902,7 @@ export const layer = Layer.effect(
 
     return Service.of({
       status,
+      hasConnectedClient,
       clients,
       tools,
       prompts,

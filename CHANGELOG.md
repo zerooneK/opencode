@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-24 (60)
+
+### Fix: Phase 1 gate was reading the wrong MCP state
+
+After Phase 1 shipped, the gate kept reporting "bridge not connected" even when the laptop bridge was actually registered and connected. Root cause: `MCP.status()` filters by `cfg.mcp` entries from the config file, and the per-user laptop-bridge is registered at runtime by `UserMcpMiddleware` — never written to the config — so the filtered status was always empty.
+
+Fix: added `MCP.hasConnectedClient()` which reads the raw `InstanceState` directly and returns true if any client (config-declared or runtime-registered) is currently connected. The tool-registry gate now uses that method instead of `status()`.
+
+Files:
+- `packages/opencode/src/mcp/mcp.ts` — new `hasConnectedClient()` service method.
+- `packages/opencode/src/tool/registry.ts` — gate uses `hasConnectedClient()` instead of `status()`.
+- `packages/opencode/test/session/prompt-effect.test.ts` and `snapshot-tool-race.test.ts` — mocks updated with the new method.
+
+---
+
 ## 2026-04-24 (59)
 
 ### Feat: Phase 1 — gate server filesystem tools behind the laptop bridge

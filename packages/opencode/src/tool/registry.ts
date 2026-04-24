@@ -288,13 +288,15 @@ export const layer: Layer.Layer<
     })
 
     // Gate function shared by every server-filesystem tool. Reads the live MCP
-    // status: if any client is currently connected, the AI should be using the
+    // state: if any client is currently connected, the AI should be using the
     // laptop_* tools instead; if nothing is connected, the user hasn't started
-    // their bridge yet.
+    // their bridge yet. We intentionally use hasConnectedClient() rather than
+    // status() because status() filters by config-file entries, and the per-user
+    // laptop-bridge is registered at runtime (via UserMcpMiddleware) rather than
+    // via opencode.json.
     const gatedExecute: Tool.Def["execute"] = () =>
       Effect.gen(function* () {
-        const status = yield* mcp.status()
-        const connected = Object.values(status).some((s) => s.status === "connected")
+        const connected = yield* mcp.hasConnectedClient()
         if (!connected) {
           return {
             title: "Laptop bridge not connected",
