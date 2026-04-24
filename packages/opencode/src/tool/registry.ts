@@ -46,8 +46,28 @@ import { Bus } from "../bus"
 import { Agent } from "../agent/agent"
 import { Skill } from "../skill"
 import { Permission } from "@/permission"
+import { MCP } from "../mcp"
 
 const log = Log.create({ service: "tool.registry" })
+
+// Tools that touch the server's filesystem or run shell commands on the
+// server. In the multi-user T-Open Workspace flow the server never stores or
+// mutates user files — all file work happens on the user's laptop via the
+// laptop-bridge MCP. These tools are kept in the catalog so the AI still sees
+// them, but their execute() is replaced with a gate that returns an
+// instructive error message telling the AI to start the bridge or use the
+// laptop_* tools.
+const SERVER_FS_TOOL_IDS = new Set<string>([
+  BashTool.id,
+  ReadTool.id,
+  WriteTool.id,
+  EditTool.id,
+  GlobTool.id,
+  GrepTool.id,
+  CodeSearchTool.id,
+  ApplyPatchTool.id,
+  LspTool.id,
+])
 
 type TaskDef = Tool.InferDef<typeof TaskTool>
 type ReadDef = Tool.InferDef<typeof ReadTool>
@@ -89,6 +109,7 @@ export const layer: Layer.Layer<
   | Ripgrep.Service
   | Format.Service
   | Truncate.Service
+  | MCP.Service
 > = Layer.effect(
   Service,
   Effect.gen(function* () {
@@ -97,6 +118,7 @@ export const layer: Layer.Layer<
     const agents = yield* Agent.Service
     const skill = yield* Skill.Service
     const truncate = yield* Truncate.Service
+    const mcp = yield* MCP.Service
 
     const invalid = yield* InvalidTool
     const task = yield* TaskTool
@@ -265,6 +287,30 @@ export const layer: Layer.Layer<
       return ["Available agent types and the tools they have access to:", description].join("\n")
     })
 
+    // Gate function shared by every server-filesystem tool. Reads the live MCP
+    // status: if any client is currently connected, the AI should be using the
+    // laptop_* tools instead; if nothing is connected, the user hasn't started
+    // their bridge yet.
+    const gatedExecute: Tool.Def["execute"] = () =>
+      Effect.gen(function* () {
+        const status = yield* mcp.status()
+        const connected = Object.values(status).some((s) => s.status === "connected")
+        if (!connected) {
+          return {
+            title: "Laptop bridge not connected",
+            metadata: {},
+            output:
+              "Your laptop bridge is not running. Please open T-Open Workspace on your laptop and start the bridge, then try again. The server cannot read, write, edit, search, or run shell commands by itself — all file work happens on your laptop through the bridge.",
+          }
+        }
+        return {
+          title: "Use laptop_* tools",
+          metadata: {},
+          output:
+            "The server does not touch files. Please use the laptop_* tools instead (for example laptop_read_file, laptop_write_file, laptop_list_files). Those run on the user's laptop and are the only way to work with files in T-Open Workspace.",
+        }
+      })
+
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
       const filtered = (yield* all()).filter((tool) => {
         if (tool.id === CodeSearchTool.id || tool.id === WebSearchTool.id) {
@@ -298,7 +344,7 @@ export const layer: Layer.Layer<
               .filter(Boolean)
               .join("\n"),
             parameters: output.parameters,
-            execute: tool.execute,
+            execute: SERVER_FS_TOOL_IDS.has(tool.id) ? gatedExecute : tool.execute,
             formatValidationError: tool.formatValidationError,
           }
         }),
@@ -335,5 +381,6 @@ export const defaultLayer = Layer.suspend(() =>
     Layer.provide(CrossSpawnSpawner.defaultLayer),
     Layer.provide(Ripgrep.defaultLayer),
     Layer.provide(Truncate.defaultLayer),
+    Layer.provide(MCP.defaultLayer),
   ),
 )

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-04-24 (59)
+
+### Feat: Phase 1 — gate server filesystem tools behind the laptop bridge
+
+First phase of a five-phase change that moves T-Open Workspace from "AI works on server files" to "AI works on the user's laptop via the bridge, or chat-only if the bridge is off." Phase 1 is backend-only, no user-visible UI change yet.
+
+**What changed.** The server's built-in filesystem/shell tools — `bash`, `read`, `write`, `edit`, `glob`, `grep`, `code` (ripgrep), `patch` (apply_patch), `lsp` — are still listed to the model so the AI knows they exist, but their `execute()` is swapped for a gate that checks the live MCP connection state:
+
+- **No MCP client connected** → returns *"Your laptop bridge is not running. Please open T-Open Workspace on your laptop and start the bridge, then try again."* The AI surfaces this to the user instead of trying to work on server files.
+- **A client is connected** → returns *"The server does not touch files. Please use the laptop_* tools instead (for example laptop_read_file, laptop_write_file, laptop_list_files)."* This nudges the AI onto the bridge's tools when it hallucinates the old server ones.
+
+The gate sits in `ToolRegistry.tools()` at the point where each built-in tool gets wired into the per-session tool list — description, parameters, and validation are preserved, only `execute` is replaced. Pure helper tools (`todo`, `task`, `skill`, `question`, `plan`, `fetch`/webfetch, `search`/websearch, `invalid`) are untouched.
+
+Files:
+- `packages/opencode/src/tool/registry.ts` — added `SERVER_FS_TOOL_IDS` set, imported `MCP`, added `MCP.Service` to the Layer's requirements and the `defaultLayer`'s `provide` list, added a shared `gatedExecute` that reads `mcp.status()`, swapped `execute` for any tool whose id is in the set.
+
+No config flag, no migration. Effect is immediate on server restart: the AI will start telling users to start their bridge as soon as it tries to touch a file.
+
+---
+
 ## 2026-04-24 (58)
 
 ### Fix: four highest-priority findings from the bug-hunt audit
