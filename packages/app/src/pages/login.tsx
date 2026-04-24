@@ -1,4 +1,4 @@
-import { createEffect, createSignal, Show } from "solid-js"
+import { createSignal, onMount, Show } from "solid-js"
 import { useNavigate } from "@solidjs/router"
 import { base64Encode } from "@opencode-ai/shared/util/encode"
 import { useAuth } from "@/context/auth"
@@ -13,9 +13,10 @@ function getUserRedirectPath(auth: ReturnType<typeof useAuth>): string {
 export default function LoginPage() {
   const auth = useAuth()
   const navigate = useNavigate()
-  // If the user is already authenticated (e.g. Router remounted after login),
-  // redirect to home immediately.
-  createEffect(() => {
+  // One-time check on mount only. Using createEffect here caused a redirect loop
+  // because it re-fires on every auth-store signal change — pressing the browser
+  // back button to reach /login while authed kept snapping the user away.
+  onMount(() => {
     if (!auth.store.loading && auth.store.user) {
       navigate(getUserRedirectPath(auth), { replace: true })
     }

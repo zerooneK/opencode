@@ -58,10 +58,21 @@ function AuthContext() {
       setStore("loading", false)
       return
     }
-    const res = await authFetch("/user/me")
-    if (!res.ok) {
+    // Don't wipe the token on transient failures (network blip, 5xx, backend
+    // restart). Only 401/403 is authoritative "this token is bad" — anything
+    // else means we can't tell, so keep the token and let the next request retry.
+    const res = await authFetch("/user/me").catch(() => null)
+    if (!res) {
+      setStore("loading", false)
+      return
+    }
+    if (res.status === 401 || res.status === 403) {
       localStorage.removeItem(TOKEN_KEY)
       setStore({ user: null, token: null, loading: false })
+      return
+    }
+    if (!res.ok) {
+      setStore("loading", false)
       return
     }
     const data = (await res.json()) as User & { workspaceDir?: string; defaultWorkspace?: string }

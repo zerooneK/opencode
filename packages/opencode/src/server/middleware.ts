@@ -91,8 +91,6 @@ const PUBLIC_PATHS = new Set(["/user/login", "/user/create"])
 export const UserAuthMiddleware: MiddlewareHandler = async (c, next) => {
   if (c.req.method === "OPTIONS") return next()
   if (PUBLIC_PATHS.has(c.req.path)) return next()
-  // If no users exist yet (initial setup), allow through so first admin can be created
-  if (UserAuth.count() === 0) return next()
   const token = UserAuth.extractToken(c.req.header("Authorization")) ?? c.req.query("user_token")
   const user = token ? UserAuth.validateSession(token) : undefined
   if (!user) return c.json({ error: "Unauthorized" }, 401)

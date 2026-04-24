@@ -30,6 +30,15 @@ export namespace UserAuth {
     return Database.use((db) => db.select().from(UserTable).all().length)
   }
 
+  // Used by delete/demote guards so we never end up with zero admins — that
+  // would strand the whole deployment (no one can reach the admin panel to
+  // create a new admin).
+  export function adminCount(): number {
+    return Database.use(
+      (db) => db.select().from(UserTable).where(eq(UserTable.role, "admin")).all().length,
+    )
+  }
+
   export function create(username: string, password: string, role: Role = "user"): string {
     if (findByUsername(username)) throw new UsernameTakenError(username)
     const id = crypto.randomUUID()

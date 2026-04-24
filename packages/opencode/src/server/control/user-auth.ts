@@ -130,7 +130,14 @@ export function UserAuthRoutes(): Hono {
       validator(
         "json",
         z.object({
-          username: z.string().min(1),
+          username: z
+            .string()
+            .min(1)
+            .max(64)
+            .regex(
+              /^[a-zA-Z0-9_-]+$/,
+              "Username can only contain letters, numbers, hyphens and underscores",
+            ),
           password: z.string().min(6),
           role: z.enum(["admin", "user"]).default("user"),
         }),
@@ -161,6 +168,10 @@ export function UserAuthRoutes(): Hono {
       if (!admin) return c.json({ error: "Forbidden" }, 403)
       if (c.req.param("id") === admin.id) return c.json({ error: "Cannot delete yourself" }, 400)
       const user = UserAuth.findById(c.req.param("id"))
+      // Refuse to delete the last remaining admin — would lock everyone out.
+      if (user?.role === "admin" && UserAuth.adminCount() <= 1) {
+        return c.json({ error: "Cannot delete the last admin" }, 400)
+      }
       if (user) {
         // Drop DB rows first (while we still know the username path) so that
         // re-creating a user with the same username starts with a clean
@@ -183,7 +194,15 @@ export function UserAuthRoutes(): Hono {
         const admin = requireAdmin(c.req.header("Authorization"))
         if (!admin) return c.json({ error: "Forbidden" }, 403)
         if (c.req.param("id") === admin.id) return c.json({ error: "Cannot change your own role" }, 400)
-        UserAuth.changeRole(c.req.param("id"), c.req.valid("json").role)
+        const newRole = c.req.valid("json").role
+        // Refuse to demote the last admin — would lock everyone out.
+        if (newRole === "user") {
+          const target = UserAuth.findById(c.req.param("id"))
+          if (target?.role === "admin" && UserAuth.adminCount() <= 1) {
+            return c.json({ error: "Cannot demote the last admin" }, 400)
+          }
+        }
+        UserAuth.changeRole(c.req.param("id"), newRole)
         return c.json(true)
       },
     )

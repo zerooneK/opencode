@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-04-24 (58)
+
+### Fix: four highest-priority findings from the bug-hunt audit
+
+Four issues surfaced by the multi-agent bug hunt of our custom code. All four are under-the-hood — no new UI, no removed features, nothing users need to relearn. The frontend changes (F003, F017) need a browser hard-refresh after deploy; the backend changes (002, 006) take effect as soon as the server restarts.
+
+**BUG-002 — auth bypass when all admins are deleted.** `UserAuthMiddleware` had `if (UserAuth.count() === 0) return next()` firing on every request, meant as a first-admin-onboarding shortcut. If every admin were ever deleted (accidentally or via a bug chain), that check opened the entire server to unauthenticated LAN access. Fix: the zero-user shortcut is removed — first-admin creation is already covered by `POST /user/create` being in `PUBLIC_PATHS`. Added `UserAuth.adminCount()` and wired last-admin guards into `DELETE /user/:id` and `PUT /user/:id/role` so the system refuses any action that would leave zero admins.
+
+**BUG-006 — username path traversal.** The `/user/create` zod validator accepted any non-empty string for `username`, but the username is later joined into filesystem paths (`createUserWorkspace`, `renameUserWorkspace`, `deleteUserData`). A username like `../evil` would have escaped the workspaces directory. Fix: `/user/create` now requires `^[a-zA-Z0-9_-]+$` (same rule already applied to workspace names) and caps length at 64. `/user/login` is intentionally left alone so existing accounts with unusual characters can still sign in.
+
+**BUG-F003 — random logouts on server hiccups.** The boot-time token validation in `auth.tsx` treated any non-2xx response as "this token is dead" and wiped it from localStorage. Backend restarts, 5xx errors, network blips, reverse-proxy timeouts — all forced a re-login. Fix: only `401`/`403` are treated as authoritative auth failure. Other non-ok responses (including network failures, where `fetch` threw and `res` is null) leave the token intact so the next request can retry. Result: users stop being kicked out while the server is merely restarting.
+
+**BUG-F017 — /login redirect loop while authenticated.** The login page used `createEffect` to redirect authed users away, which re-fires on every auth-store change. Pressing the browser back button to reach `/login` snapped the user straight back to their workspace, and any subsequent token refresh re-triggered the redirect. Fix: replaced with `onMount` so the check runs once per page mount; successful login still navigates explicitly in `handleSubmit`.
+
+Files:
+- `packages/opencode/src/server/middleware.ts` — removed `count()===0` bypass.
+- `packages/opencode/src/auth/user.ts` — added `adminCount()`.
+- `packages/opencode/src/server/control/user-auth.ts` — username regex on create, last-admin guards on delete + role-change.
+- `packages/app/src/context/auth.tsx` — 401/403-only token wipe with network-error handling.
+- `packages/app/src/pages/login.tsx` — `createEffect` → `onMount` for the already-authed redirect.
+
+---
+
 ## 2026-04-22 (57)
 
 ### Chore: track project guidance + peer dep
