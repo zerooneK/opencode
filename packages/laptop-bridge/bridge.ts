@@ -21,6 +21,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { z } from "zod"
+import { resolveSharedExistingPath, resolveSharedRoot, resolveSharedWritePath } from "./path"
 
 // Text-extraction helpers for office formats. Dynamically imported inside
 // read_file so users who never ask for .docx / .pdf don't pay the startup cost.
@@ -58,32 +59,16 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   process.exit(1)
 }
 
-const rootFolder = path.resolve(folderArg.replace(/^~\//, `${os.homedir()}/`))
-const rootStat = await fs.stat(rootFolder).catch(() => null)
-if (!rootStat || !rootStat.isDirectory()) {
-  console.error(`Folder does not exist or is not a directory: ${rootFolder}`)
+const rootFolderInput = path.resolve(folderArg.replace(/^~\//, `${os.homedir()}/`))
+const rootFolder = await resolveSharedRoot(rootFolderInput).catch(() => null)
+if (!rootFolder) {
+  console.error(`Folder does not exist or is not a directory: ${rootFolderInput}`)
   process.exit(1)
 }
 
 // ─── Token ──────────────────────────────────────────────────────────────────
 
 const token = randomBytes(12).toString("base64url")
-
-// ─── Path safety ────────────────────────────────────────────────────────────
-
-/**
- * Resolve `rel` relative to the shared folder and refuse anything that
- * escapes it (via `..`, absolute paths, symlinks pointing outside, etc).
- */
-function safePath(rel: string): string {
-  const cleaned = rel.replace(/^\/+/, "")
-  const resolved = path.resolve(rootFolder, cleaned)
-  const withSep = rootFolder.endsWith(path.sep) ? rootFolder : rootFolder + path.sep
-  if (resolved !== rootFolder && !resolved.startsWith(withSep)) {
-    throw new Error(`Path escapes the shared folder: ${rel}`)
-  }
-  return resolved
-}
 
 // ─── Server + transport factory ─────────────────────────────────────────────
 
@@ -144,7 +129,7 @@ function registerTools(server: McpServer) {
     "Read a file from the user's LAPTOP (their local machine), NOT from the workspace on the server. Automatically handles text files (.txt, .md, .json, .csv, .py, etc.), Word documents (.docx), Excel spreadsheets (.xlsx, .xls), and PDFs (.pdf). Use this whenever the user says 'from my laptop', 'บนเครื่องฉัน', 'local file', 'my computer', or names a file that isn't in the server workspace. Prefer this over any other read tool when the user mentions their laptop/local files.",
     { path: z.string().describe("Path relative to the laptop shared folder.") },
     async ({ path: rel }) => {
-      const full = safePath(rel)
+      const full = await resolveSharedExistingPath(rootFolder, rel)
       const text = await readFileAsText(full)
       return { content: [{ type: "text", text }] }
     },
@@ -158,7 +143,7 @@ function registerTools(server: McpServer) {
       content: z.string().describe("Full file content. Overwrites any existing content."),
     },
     async ({ path: rel, content }) => {
-      const full = safePath(rel)
+      const full = await resolveSharedWritePath(rootFolder, rel)
       await fs.mkdir(path.dirname(full), { recursive: true })
       await fs.writeFile(full, content, "utf-8")
       return {
@@ -179,7 +164,7 @@ function registerTools(server: McpServer) {
         .describe("Path relative to the laptop shared folder. Defaults to the root."),
     },
     async ({ path: rel }) => {
-      const full = safePath(rel ?? "")
+      const full = await resolveSharedExistingPath(rootFolder, rel ?? "")
       const entries = await fs.readdir(full, { withFileTypes: true })
       const lines = entries
         .sort((a, b) => {

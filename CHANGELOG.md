@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-26 (61)
+
+### Fix: block laptop-bridge shortcut/symlink escapes
+
+The laptop bridge used a simple string-prefix path check, which meant a symlink inside the shared folder could still point outside it. In practice that allowed reads and writes to escape the folder the user explicitly shared.
+
+Fix: the bridge now resolves real filesystem paths before allowing access. Existing read/list targets are checked with `realpath()`, and writes to new files verify the nearest existing parent directory's real path before creating anything. Added regression tests that cover both read and write escapes through a symlinked directory.
+
+Files:
+- `packages/laptop-bridge/path.ts` — canonical path helpers for shared-root enforcement.
+- `packages/laptop-bridge/bridge.ts` — read/list/write now use canonical path checks instead of lexical prefix checks.
+- `packages/laptop-bridge/path.test.ts` — regression tests for symlink escape cases.
+
+---
+
 ## 2026-04-24 (60)
 
 ### Fix: Phase 1 gate was reading the wrong MCP state
