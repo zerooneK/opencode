@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### Feat: Persistent memory across sessions (Hermes-style)
+
+Added a new persistent memory feature that stores user preferences and remembered facts across sessions, similar to Hermes Agent's approach.
+
+**What changed:**
+- New `memory` tool with `add` and `list` actions
+- Memory stored in `~/.config/opencode/memory.md`
+- Two sections: User Preferences and Remembered Facts
+- Memory is automatically loaded into the system prompt at session start
+- Exact-match deduplication prevents duplicates
+- File locking ensures safe concurrent writes
+
+**Behavior:**
+- User says "remember this" → auto-save
+- Agent infers something → asks first (not implemented in v1)
+- Never silent writes
+
+Files:
+- `packages/opencode/src/session/memory.ts` — storage logic
+- `packages/opencode/src/tool/memory.ts` — tool definition
+- `packages/opencode/src/session/instruction.ts` — loads memory into system prompt
+- `packages/opencode/src/tool/registry.ts` — registers the memory tool
+- `packages/opencode/test/session/memory.test.ts` — tests
+
+---
+
 ## 2026-04-26 (61)
 
 ### Fix: block laptop-bridge shortcut/symlink escapes

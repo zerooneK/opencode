@@ -12,6 +12,7 @@ import { Instance } from "../project/instance"
 import { Log } from "../util"
 import type { MessageV2 } from "./message-v2"
 import type { MessageID } from "./schema"
+import * as Memory from "./memory"
 
 const log = Log.create({ service: "instruction" })
 
@@ -170,10 +171,36 @@ export namespace Instruction {
           const files = yield* Effect.forEach(Array.from(paths), read, { concurrency: 8 })
           const remote = yield* Effect.forEach(urls, fetch, { concurrency: 4 })
 
-          return [
+          const instructions = [
             ...Array.from(paths).flatMap((item, i) => (files[i] ? [`Instructions from: ${item}\n${files[i]}`] : [])),
             ...urls.flatMap((item, i) => (remote[i] ? [`Instructions from: ${item}\n${remote[i]}`] : [])),
           ]
+
+          // Load persistent memory
+          const memoryData = yield* Effect.promise(() => Memory.loadMemory())
+          const memoryLines: string[] = []
+          
+          if (memoryData.preferences.length > 0) {
+            memoryLines.push("# User Preferences")
+            for (const pref of memoryData.preferences) {
+              memoryLines.push(`- ${pref}`)
+            }
+            memoryLines.push("")
+          }
+          
+          if (memoryData.facts.length > 0) {
+            memoryLines.push("# Remembered Facts")
+            for (const fact of memoryData.facts) {
+              memoryLines.push(`- ${fact}`)
+            }
+            memoryLines.push("")
+          }
+          
+          if (memoryLines.length > 0) {
+            instructions.push("Persistent Memory:\n" + memoryLines.join("\n"))
+          }
+
+          return instructions
         })
 
         const find = Effect.fn("Instruction.find")(function* (dir: string) {
