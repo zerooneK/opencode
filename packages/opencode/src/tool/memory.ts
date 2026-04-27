@@ -15,13 +15,7 @@ const Parameters = z.object({
     .describe("The content to add (required for 'add' action, not needed for 'list')"),
 })
 
-type Metadata = {
-  added?: boolean
-  skipped?: boolean
-  reason?: string
-  preferences: string[]
-  facts: string[]
-}
+type Params = z.infer<typeof Parameters>
 
 export const MemoryTool = Tool.define(
   "memory",
@@ -29,71 +23,72 @@ export const MemoryTool = Tool.define(
     description:
       "Manage persistent memory that stores user preferences and remembered facts across sessions. Use 'add' to save something the user explicitly wants remembered (like 'remember this' or 'remember that I prefer X'). Use 'list' to see what's currently stored.",
     parameters: Parameters,
-    execute: (params: z.infer<typeof Parameters>, ctx: Tool.Context<Metadata>) =>
-      Effect.gen(function* () {
-        // Only ask permission for 'add' action, not 'list'
-        if (params.action === "add") {
+    execute: (params: Params, ctx) => {
+      // Only ask permission for 'add' action, not 'list'
+      if (params.action === "add") {
+        return Effect.gen(function* () {
           yield* ctx.ask({
             permission: "memory",
             patterns: ["*"],
             always: [],
             metadata: {},
           })
-        }
 
-        if (params.action === "list") {
-          const data = yield* Effect.promise(() => Memory.listMemory())
+          if (!params.section) {
+            throw new Error("section is required for 'add' action")
+          }
+
+          if (!params.content) {
+            throw new Error("content is required for 'add' action")
+          }
+
+          const result = yield* Effect.promise(() => Memory.addItem(params.section!, params.content!))
+
+          if (result.success) {
+            const data = yield* Effect.promise(() => Memory.loadMemoryIfExists())
+            return {
+              title: "Memory saved",
+              output: `Added to ${params.section}: "${params.content}"`,
+              metadata: {
+                added: true,
+                preferences: data.preferences,
+                facts: data.facts,
+              },
+            }
+          }
+
           return {
-            title: "Memory contents",
-            output: [
-              "# User Preferences",
-              ...data.preferences.map((p) => `- ${p}`),
-              "",
-              "# Remembered Facts",
-              ...data.facts.map((f) => `- ${f}`),
-            ].join("\n"),
+            title: "Memory skipped",
+            output: result.reason || "Item already exists",
             metadata: {
-              preferences: data.preferences,
-              facts: data.facts,
+              added: false,
+              skipped: true,
+              reason: result.reason,
+              preferences: [],
+              facts: [],
             },
           }
-        }
+        })
+      }
 
-        // action === "add"
-        if (!params.section) {
-          throw new Error("section is required for 'add' action")
-        }
-
-        if (!params.content) {
-          throw new Error("content is required for 'add' action")
-        }
-
-        const result = yield* Effect.promise(() => Memory.addItem(params.section!, params.content!))
-
-        if (result.success) {
-          const data = yield* Effect.promise(() => Memory.listMemory())
-          return {
-            title: "Memory saved",
-            output: `Added to ${params.section}: "${params.content}"`,
-            metadata: {
-              added: true,
-              preferences: data.preferences,
-              facts: data.facts,
-            },
-          }
-        }
-
+      // action === "list" - no permission needed, no file creation
+      return Effect.gen(function* () {
+        const data = yield* Effect.promise(() => Memory.loadMemoryIfExists())
         return {
-          title: "Memory skipped",
-          output: result.reason || "Item already exists",
+          title: "Memory contents",
+          output: [
+            "# User Preferences",
+            ...data.preferences.map((p) => `- ${p}`),
+            "",
+            "# Remembered Facts",
+            ...data.facts.map((f) => `- ${f}`),
+          ].join("\n"),
           metadata: {
-            added: false,
-            skipped: true,
-            reason: result.reason,
-            preferences: [],
-            facts: [],
+            preferences: data.preferences,
+            facts: data.facts,
           },
         }
-      }),
-  }) as any,
+      })
+    },
+  }),
 )
