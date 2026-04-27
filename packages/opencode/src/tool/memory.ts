@@ -23,7 +23,7 @@ type Metadata = {
   facts: string[]
 }
 
-export const MemoryTool = Tool.define<typeof Parameters, Metadata>(
+export const MemoryTool = Tool.define(
   "memory",
   Effect.succeed({
     description:
@@ -31,15 +31,18 @@ export const MemoryTool = Tool.define<typeof Parameters, Metadata>(
     parameters: Parameters,
     execute: (params: z.infer<typeof Parameters>, ctx: Tool.Context<Metadata>) =>
       Effect.gen(function* () {
-        yield* ctx.ask({
-          permission: "memory",
-          patterns: ["*"],
-          always: [],
-          metadata: {},
-        })
+        // Only ask permission for 'add' action, not 'list'
+        if (params.action === "add") {
+          yield* ctx.ask({
+            permission: "memory",
+            patterns: ["*"],
+            always: [],
+            metadata: {},
+          })
+        }
 
         if (params.action === "list") {
-          const data = await Memory.listMemory()
+          const data = yield* Effect.promise(() => Memory.listMemory())
           return {
             title: "Memory contents",
             output: [
@@ -65,10 +68,10 @@ export const MemoryTool = Tool.define<typeof Parameters, Metadata>(
           throw new Error("content is required for 'add' action")
         }
 
-        const result = await Memory.addItem(params.section, params.content)
+        const result = yield* Effect.promise(() => Memory.addItem(params.section!, params.content!))
 
         if (result.success) {
-          const data = await Memory.listMemory()
+          const data = yield* Effect.promise(() => Memory.listMemory())
           return {
             title: "Memory saved",
             output: `Added to ${params.section}: "${params.content}"`,
@@ -92,5 +95,5 @@ export const MemoryTool = Tool.define<typeof Parameters, Metadata>(
           },
         }
       }),
-  } satisfies Tool.DefWithoutID<typeof Parameters, Metadata>),
+  }) as any,
 )

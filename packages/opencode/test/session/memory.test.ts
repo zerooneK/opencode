@@ -1,6 +1,7 @@
 import * as CrossSpawnSpawner from "../../src/effect/cross-spawn-spawner"
 import { Effect, Layer } from "effect"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import os from "os"
 import path from "path"
 import { Global } from "../../src/global"
 import * as Memory from "../../src/session/memory"
@@ -11,9 +12,9 @@ describe("session.memory", () => {
   let originalConfigPath: string
   let testDir: string
 
-  beforeEach(async () => {
-    // Create a temp directory for this test
-    testDir = await Bun.makeTempDir({ prefix: "opencode-memory-test-" })
+  beforeEach(() => {
+    // Create a temp directory for this test using same pattern as fixture
+    testDir = path.join(os.tmpdir(), "opencode-memory-test-" + Math.random().toString(36).slice(2))
     originalConfigPath = Global.Path.config
     
     // Override the config path to our test directory
@@ -31,7 +32,7 @@ describe("session.memory", () => {
     })
 
     // Cleanup
-    await Bun.spawn(["rm", "-rf", testDir])
+    await Bun.$`rm -rf ${testDir}`.nothrow()
   })
 
   describe("loadMemory", () => {

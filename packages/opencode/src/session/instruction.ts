@@ -176,8 +176,8 @@ export namespace Instruction {
             ...urls.flatMap((item, i) => (remote[i] ? [`Instructions from: ${item}\n${remote[i]}`] : [])),
           ]
 
-          // Load persistent memory
-          const memoryData = yield* Effect.promise(() => Memory.loadMemory())
+          // Load persistent memory (only if file exists, don't create on prompt load)
+          const memoryData = yield* Effect.promise(() => Memory.loadMemoryIfExists())
           const memoryLines: string[] = []
           
           if (memoryData.preferences.length > 0) {

@@ -36,6 +36,18 @@ export async function loadMemory(): Promise<MemoryData> {
   return parseMemoryContent(content)
 }
 
+export async function loadMemoryIfExists(): Promise<MemoryData> {
+  const filepath = memoryPath()
+  const file = Bun.file(filepath)
+
+  if (!await file.exists()) {
+    return { preferences: [], facts: [] }
+  }
+
+  const content = await file.text()
+  return parseMemoryContent(content)
+}
+
 function parseMemoryContent(content: string): MemoryData {
   const result: MemoryData = { preferences: [], facts: [] }
   
