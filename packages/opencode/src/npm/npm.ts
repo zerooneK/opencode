@@ -28,15 +28,16 @@ function directory(pkg: string) {
 }
 
 function resolveEntryPoint(name: string, dir: string) {
-  let entrypoint: string | undefined
   try {
-    entrypoint = typeof Bun !== "undefined" ? import.meta.resolve(name, dir) : import.meta.resolve(dir)
-  } catch {}
-  const result = {
-    directory: dir,
-    entrypoint,
+    const entrypoint =
+      typeof Bun !== "undefined"
+        ? import.meta.resolveSync(name, dir)
+        : // @ts-expect-error Node's import.meta.resolve returns string at runtime but typed as Promise<string>
+          (import.meta.resolve(dir) as string)
+    return { directory: dir, entrypoint }
+  } catch {
+    return { directory: dir, entrypoint: undefined }
   }
-  return result
 }
 
 export async function outdated(pkg: string, cachedVersion: string): Promise<boolean> {

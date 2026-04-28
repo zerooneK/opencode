@@ -53,7 +53,7 @@ function createEventSource(client: RpcClient): EventSource {
 async function target() {
   if (typeof OPENCODE_WORKER_PATH !== "undefined") return OPENCODE_WORKER_PATH
   const dist = new URL("./cli/cmd/tui/worker.js", import.meta.url)
-  if (await Filesystem.exists(fileURLToPath(dist))) return dist
+  if (await Filesystem.exists(fileURLToPath(dist.href))) return dist
   return new URL("./worker.ts", import.meta.url)
 }
 

@@ -57,20 +57,21 @@ function isEnoent(e: unknown): e is { code: "ENOENT" } {
 }
 
 export async function write(p: string, content: string | Buffer | Uint8Array, mode?: number): Promise<void> {
-  try {
+  // Convert Buffer to Uint8Array for fs/promises compatibility
+  const data = content instanceof Buffer ? new Uint8Array(content) : content
+  const doWrite = async () => {
     if (mode) {
-      await writeFile(p, content, { mode })
+      await writeFile(p, data, { mode })
     } else {
-      await writeFile(p, content)
+      await writeFile(p, data)
     }
+  }
+  try {
+    await doWrite()
   } catch (e) {
     if (isEnoent(e)) {
       await mkdir(dirname(p), { recursive: true })
-      if (mode) {
-        await writeFile(p, content, { mode })
-      } else {
-        await writeFile(p, content)
-      }
+      await doWrite()
       return
     }
     throw e
@@ -91,7 +92,12 @@ export async function writeStream(
     await mkdir(dir, { recursive: true })
   }
 
-  const nodeStream = stream instanceof ReadableStream ? Readable.fromWeb(stream as any) : stream
+  // Convert ReadableStream to Node Readable if needed
+  const nodeStream =
+    stream instanceof ReadableStream
+      ? // @ts-expect-error Readable.fromWeb exists in Node 18+ but types may not recognize it
+        Readable.fromWeb(stream as any)
+      : stream
   const writeStream = createWriteStream(p)
   await pipeline(nodeStream, writeStream)
 

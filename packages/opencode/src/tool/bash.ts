@@ -88,7 +88,7 @@ const resolveWasm = (asset: string) => {
   if (asset.startsWith("file://")) return fileURLToPath(asset)
   if (asset.startsWith("/") || /^[a-z]:/i.test(asset)) return asset
   const url = new URL(asset, import.meta.url)
-  return fileURLToPath(url)
+  return fileURLToPath(url.href)
 }
 
 function parts(node: Node) {

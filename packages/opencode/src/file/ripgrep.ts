@@ -276,7 +276,7 @@ export namespace Ripgrep {
     }
     const js = new URL("./ripgrep.worker.js", import.meta.url)
     return Effect.tryPromise({
-      try: () => Filesystem.exists(fileURLToPath(js)),
+      try: () => Filesystem.exists(fileURLToPath(js.href)),
       catch: toError,
     }).pipe(Effect.map((exists) => (exists ? js : new URL("./ripgrep.worker.ts", import.meta.url))))
   }

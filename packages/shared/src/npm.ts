@@ -34,16 +34,15 @@ export namespace Npm {
   }
 
   const resolveEntryPoint = (name: string, dir: string): EntryPoint => {
-    let entrypoint: Option.Option<string>
     try {
-      const resolved = typeof Bun !== "undefined" ? import.meta.resolve(name, dir) : import.meta.resolve(dir)
-      entrypoint = Option.some(resolved)
+      if (typeof Bun !== "undefined") {
+        // Bun's import.meta.resolve returns Promise<string> at type level but resolves sync at runtime
+        return { directory: dir, entrypoint: Option.some(import.meta.resolveSync(name, dir)) }
+      }
+      // @ts-expect-error Node's import.meta.resolve is sync in practice but typed as potentially undefined
+      return { directory: dir, entrypoint: Option.some(import.meta.resolve(dir)) }
     } catch {
-      entrypoint = Option.none()
-    }
-    return {
-      directory: dir,
-      entrypoint,
+      return { directory: dir, entrypoint: Option.none() }
     }
   }
 

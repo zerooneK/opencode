@@ -4,7 +4,7 @@ import pkg from "../package.json"
 import { Script } from "@opencode-ai/script"
 import { fileURLToPath } from "url"
 
-const dir = fileURLToPath(new URL("..", import.meta.url))
+const dir = fileURLToPath(new URL("..", import.meta.url).href)
 process.chdir(dir)
 
 const binaries: Record<string, string> = {}

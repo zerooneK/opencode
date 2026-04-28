@@ -7,6 +7,4 @@ export type GlobalEvent = {
   payload: any
 }
 
-export const GlobalBus = new EventEmitter<{
-  event: [GlobalEvent]
-}>()
+export const GlobalBus = new EventEmitter()
