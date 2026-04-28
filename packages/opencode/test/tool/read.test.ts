@@ -86,6 +86,7 @@ const glob = (p: string) =>
   process.platform === "win32" ? Filesystem.normalizePathPattern(p) : p.replaceAll("\\", "/")
 const put = Effect.fn("ReadToolTest.put")(function* (p: string, content: string | Buffer | Uint8Array) {
   const fs = yield* AppFileSystem.Service
+  // @ts-expect-error Bun Buffer type incompatible with AppFileSystem.writeWithDirs
   yield* fs.writeWithDirs(p, content)
 })
 const load = Effect.fn("ReadToolTest.load")(function* (p: string) {

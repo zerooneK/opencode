@@ -101,7 +101,7 @@ describe("file/index Filesystem patterns", () => {
       await using tmp = await tmpdir()
       const filepath = path.join(tmp.path, "image.png")
       const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
-      await fs.writeFile(filepath, binaryContent)
+      await fs.writeFile(filepath, new Uint8Array(binaryContent))
 
       await Instance.provide({
         directory: tmp.path,
@@ -118,7 +118,7 @@ describe("file/index Filesystem patterns", () => {
     test("returns empty for binary non-image files", async () => {
       await using tmp = await tmpdir()
       const filepath = path.join(tmp.path, "binary.so")
-      await fs.writeFile(filepath, Buffer.from([0x7f, 0x45, 0x4c, 0x46]), "binary")
+      await fs.writeFile(filepath, new Uint8Array([0x7f, 0x45, 0x4c, 0x46]), "binary")
 
       await Instance.provide({
         directory: tmp.path,
@@ -159,6 +159,7 @@ describe("file/index Filesystem patterns", () => {
 
       for (const { ext, mime } of testCases) {
         const filepath = path.join(tmp.path, `test.${ext}`)
+        // @ts-expect-error Bun Buffer type incompatible with fs.writeFile parameter type
         await fs.writeFile(filepath, Buffer.from([0x00, 0x00, 0x00, 0x00]), "binary")
 
         await Instance.provide({
@@ -370,6 +371,7 @@ describe("file/index Filesystem patterns", () => {
     test("returns base64 encoding for images", async () => {
       await using tmp = await tmpdir()
       const filepath = path.join(tmp.path, "test.jpg")
+      // @ts-expect-error Bun Buffer type incompatible with fs.writeFile parameter type
       await fs.writeFile(filepath, Buffer.from([0xff, 0xd8, 0xff, 0xe0]), "binary")
 
       await Instance.provide({
@@ -518,12 +520,14 @@ describe("file/index Filesystem patterns", () => {
       // Write content with null bytes so git treats it as binary
       const binaryData = Buffer.alloc(256)
       for (let i = 0; i < 256; i++) binaryData[i] = i
+      // @ts-expect-error Bun Buffer type incompatible with fs.writeFile parameter type
       await fs.writeFile(filepath, binaryData)
       await $`git add .`.cwd(tmp.path).quiet()
       await $`git commit -m "add binary"`.cwd(tmp.path).quiet()
       // Modify the binary
       const modified = Buffer.alloc(512)
       for (let i = 0; i < 512; i++) modified[i] = i % 256
+      // @ts-expect-error Bun Buffer type incompatible with fs.writeFile parameter type
       await fs.writeFile(filepath, modified)
 
       await Instance.provide({

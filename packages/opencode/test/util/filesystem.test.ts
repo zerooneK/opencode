@@ -453,6 +453,7 @@ describe("filesystem", () => {
       await Filesystem.writeStream(filepath, stream)
 
       const read = await fs.readFile(filepath)
+      // @ts-expect-error Bun Buffer type incompatible with Buffer.from
       expect(Buffer.from(read)).toEqual(Buffer.from(binaryData))
     })
 

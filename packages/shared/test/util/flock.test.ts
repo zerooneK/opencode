@@ -74,7 +74,9 @@ function run(msg: Msg) {
     proc.on("close", (code) => {
       resolve({
         code: code ?? 1,
+        // @ts-expect-error Bun Buffer.concat signature differs from Node
         stdout: Buffer.concat(stdout),
+        // @ts-expect-error Bun Buffer.concat signature differs from Node
         stderr: Buffer.concat(stderr),
       })
     })

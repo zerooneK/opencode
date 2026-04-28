@@ -53,6 +53,7 @@ function run(msg: Msg) {
     proc.stdout?.on("data", (data) => stdout.push(Buffer.from(data)))
     proc.stderr?.on("data", (data) => stderr.push(Buffer.from(data)))
     proc.on("close", (code) => {
+      // @ts-expect-error Bun Buffer.concat signature differs from Node
       resolve({ code: code ?? 1, stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) })
     })
   })

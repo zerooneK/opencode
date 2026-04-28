@@ -13,8 +13,7 @@ export function base64Decode(value: string) {
 export async function hash(content: string, algorithm = "SHA-256"): Promise<string> {
   const encoder = new TextEncoder()
   const data = encoder.encode(content)
-  // @ts-expect-error Bun's crypto.subtle.digest returns a different type but is compatible at runtime
-  const hashBuffer = await crypto.subtle.digest(algorithm, data)
+  const hashBuffer = await (crypto.subtle as any).digest(algorithm, data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
   return hashHex
