@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-28
+
+### Docs: rewrite README.md from a full repo survey
+
+Rewrote `README.md` end-to-end using findings from a parallel subagent survey of the repo. The original was a short public-facing page (installation, desktop app, agents, FAQ); the new version keeps all of that and adds a structured reference for contributors and self-hosters.
+
+**What changed.** New sections added: **Architecture** (client/server split, server route groups + middleware order, dual-runtime Bun/Node conditional imports), **Packages** (every monorepo package + the layout of `packages/opencode/src`), **Tools** (categorized built-in tools, sibling `.txt` prompt files), **Providers** (bundled AI SDK v6 providers + OpenCode Zen), **Data Layer** (Drizzle/SQLite, snake_case convention, one-time JSON→SQLite migration), **CLI** (all subcommands + global flags), **Development** (setup, running, local UI dev, lint/format/typecheck, testing, standalone binary, SDK/OpenAPI regeneration), **Code Style**, and an expanded **Contributing** section. Existing sections (Installation, Desktop App, Agents, Building on OpenCode, Documentation, FAQ, community links) are preserved.
+
+Files:
+- `README.md` — rewritten.
+
+---
+
 ## 2026-04-24 (60)
 
 ### Fix: Phase 1 gate was reading the wrong MCP state
